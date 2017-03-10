@@ -1,0 +1,67 @@
+#! /usr/bin/env ruby
+
+require 'optparse'
+require 'readline'
+require 'xlogin'
+
+module Xlogin
+  class CLI
+    def self.getopts(args)
+      options = Hash.new
+
+      opt = OptionParser.new
+      opt.on('-e', '--enable', 'Try to gain enable priviledge.') { |v| options[:e] = v }
+      opt.on('-l', '--log',    'Enable logging.')                { |v| options[:l] = v }
+      opt.on('-r FILE',        'Load extention library.')        { |v| options[:r] = v }
+
+      opt.on(      '--list',   'List all devices.')              { |v| options[:list] = v }
+
+      opt.banner += ' HOST'
+      opt.summary_width = 16
+
+      self.class.module_eval do
+        define_method(:usage) do |msg = nil|
+          puts opt.to_s
+          puts "error: #{msg}" if msg
+          exit 1
+        end
+      end
+
+      opt.parse!(args)
+      return options, args
+    end
+
+    def self.run(args = ARGV)
+      options, args = getopts(args)
+
+      if options[:r]
+        options[:r].split(':').each { |file| require file }
+      end
+
+      if options[:list]
+        factory = FirmwareFactory.new
+        puts factory.list.map { |e| e.join("\t") }
+        exit 0
+      end
+
+      target = args.shift
+      usage unless target
+
+      loggers = [$stdout]
+      loggers.push("#{target}.log") if options[:l]
+
+      puts "Trying #{target}..."
+      puts "Escape character is '^]'."
+
+      session = Xlogin.get(target, log: loggers)
+      session.enable if options[:e] && session.respond_to?(:enable)
+      session.interact!
+    rescue => e
+      $stderr.puts("#{e}\n\n")
+      raise
+    end
+
+  end
+end
+
+Xlogin::CLI.run if $0 == __FILE__
