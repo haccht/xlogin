@@ -46,9 +46,9 @@ module Xlogin
         next if line =~ /^\s*#/
 
         nodename, nodetype, uri, optline = line.chomp.split(/\s+/)
-        opts  = optline.to_s.split(',').map { |opt| opt.split('=') }
-        value = { type: nodetype, uri: uri, opts: Hash[*opts.flatten] }
-        @database[nodename] = value
+        opts = optline.to_s.split(',').map { |opt| opt.split('=') }
+        args = { type: nodetype, uri: uri, opts: Hash[*opts.flatten] }
+        @database[nodename] = args
       end
     end
 
@@ -56,8 +56,13 @@ module Xlogin
       @database[nodename]
     end
 
-    def list
-      @database.map{ |nodename, value| [nodename, value[:type]] }
+    def list(*keys)
+      @database.map do |nodename, args|
+        item = args.merge(name: nodename)
+        keys = items.keys if keys.empty?
+        vals = item.values_at(*keys)
+        (keys.size == 1) ? vals.shift : vals
+      end
     end
 
     def create(nodename, opts = {})
