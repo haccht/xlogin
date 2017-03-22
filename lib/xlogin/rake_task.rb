@@ -6,179 +6,176 @@ require 'thread'
 module Xlogin
   class RakeTask < Rake::TaskLib
 
-    begin
-      require 'rspec/expectations'
-      require 'xlogin/rspec'
-
-      include RSpec::Matchers
-    rescue LoadError
-      module RSpec
-        module Expectations
-          class ExpectationNotMetError < StandardError; end
-        end
-      end
-    end
-
     class << self
       include Rake::DSL
 
-      def hostnames_from_file(filepath)
-        hostnames = IO.readlines(filepath).map(&:strip).grep(/^\s*[^#]/)
-        hostcount = hostnames.uniq.inject({}) { |a, e| a.merge(e => hostnames.count(e)) }
-        dup_hosts = hostcount.keys.select { |hostname| hostcount[hostname] > 1 }
-        raise Xlogin::GeneralError.new("Duplicate hosts found - #{dup_hosts.join(', ')}") unless dup_hosts.empty?
+      def bulk(names, &block)
+        names = names.map(&:strip).grep(/^\s*[^#]/)
 
-        hostnames
+        namecount = names.uniq.inject({}) { |a, e| a.merge(e => names.count(e)) }
+        duplicate = namecount.keys.select { |name| namecount[name] > 1 }
+        raise Xlogin::GeneralError.new("Duplicate hosts found - #{duplicate.join(', ')}") unless duplicate.empty?
+
+        current_namespace do
+          description = Rake.application.last_description || "Run '#{RakeTask.current_namespace}'"
+
+          desc description
+          task all: names
+
+          names.each do |name|
+            desc "#{description} -> '#{name}'"
+            RakeTask.new(name, &block)
+          end
+        end
       end
 
-      def default_path(&block)
-        path = self.name.split('::').first.downcase
-        namespace(path, &block)
-      end
-
-      def current_path
-        Rake.application.current_scope.path
-      end
-
-      def synchronize(&block)
+      def mutex
         @mutex ||= Mutex.new
-        @mutex.synchronize(&block) if block
+      end
+
+      def current_namespace
+        path = Rake.application.current_scope.path
+
+        if path.empty?
+          path = self.name.split('::').first.downcase
+          namespace(path) { yield } if block_given?
+        else
+          yield if block_given?
+        end
+
+        path
       end
     end
 
 
-    attr_reader :options, :errors
+    attr_reader   :name
 
-    def initialize(nodename, **opts, &block)
-      @errors  = []
-      @session = nil
-      @session_opts = opts
+    attr_accessor :fail_on_error
+    attr_accessor :silent
+    attr_accessor :lockfile
+    attr_accessor :logfile
+    attr_accessor :timeout
 
-      @options = Rake.application.options.dup
-      @options.quiet = false
-      @options.fail_on_error = true
+    def initialize(name, *args)
+      @name          = name
 
-      @nodename = nodename
-      @response = nil
+      @fail_on_error = true
+      @silent        = false
+      @lockfile      = nil
+      @logfile       = nil
+      @timeout       = nil
 
-      if RakeTask.current_path.empty?
-        RakeTask.default_path { define(&block) }
-      else
-        define(&block)
+      @session       = nil
+      @taskrunner    = nil
+
+      yield self if block_given?
+      define
+    end
+
+    def start(&block)
+      @taskrunner = block
+    end
+
+    def puts(*messages, io: $stdout)
+      RakeTask.mutex.synchronize do
+        messages.flat_map { |message| message.to_s.lines }.each do |line|
+          line.gsub!("\r", "")
+          io.puts (Rake.application.options.always_multitask)? "#{name}\t#{line}" : line
+        end
       end
     end
 
     private
-    def define(&block)
-      lockfile = File.join('locks', "#{RakeTask.current_path}:#{@nodename}.lock")
+    def define
+      RakeTask.current_namespace do
+        description = Rake.application.last_description || "Run '#{RakeTask.current_namespace}'"
+        desc "#{description} -> '#{name}'"
 
-      task(@nodename => lockfile)
-      file(lockfile) do
-        logfile = File.join('logs', "#{@nodename}_#{Time.now.strftime('%Y%m%d%H%M%S')}.log")
-        mkdir_p(File.dirname(logfile),  verbose: @options.trace)
+        if lockfile
+          task(name => lockfile)
+          file(lockfile) do
+            run_task
 
-        loggers = [logfile, @session_opts[:log], $stdout].flatten.compact.uniq
-        loggers.delete($stdout) if @options.always_multitask || @options.silent
-
-        begin
-          @session = Xlogin.get(@nodename, @session_opts.merge(log: loggers))
-          instance_exec(@nodename, &block) if block
-        rescue => e
-          raise if @options.fail_on_error
-          @errors << [@nodename, '-', e]
-
-          message = "#{@nodename}: #{e}"
-          msg_output($stderr, message)
+            mkdir_p(File.dirname(lockfile), verbose: Rake.application.options.trace)
+            touch(lockfile, verbose: Rake.application.options.trace)
+          end
+        else
+          task(name) do
+            run_task
+          end
         end
 
-        if @errors.empty?
-          mkdir_p(File.dirname(lockfile), verbose: @options.trace)
-          touch(lockfile, verbose: @options.trace)
+        [logfile, lockfile].each do |file|
+          next unless file
+
+          desc 'Remove any temporary products'
+          task 'clean' do
+            rm(file, verbose: true) if File.exist?(file)
+          end
         end
       end
     end
 
-    def method_missing(name, *args, &block)
-      return super unless @session.respond_to?(name)
-      @session.send(name, *args, &block)
-    end
+    def run_task
+      loggers = []
+      loggers << $stdout unless silent || Rake.application.options.silent || Rake.application.options.always_multitask
 
-    def set(**opts)
-      temp = opts.keys.inject({}) { |a, k| a[k] = @options[k]; a }
-      opts.each { |k, v| @options[k] = v }
-      if block_given?
-        resp = yield
-        temp.each { |k, v| @options[k] = v }
-        resp
-      end
-    end
-
-    def cmd(command = '', &block)
-      return msg(command) if command =~ /^\s*#/
-      return ask(command, &block) unless (Rake.verbose == false) || @options.quiet
-
-      resp = @session.cmd(command).to_s
-      if @options.always_multitask && !@options.silent
-        message = resp.lines.map { |line| "[#{@session.name}] #{line}" }.join
-        msg_output($stdout, message)
+      if logfile
+        mkdir_p(File.dirname(logfile), verbose: Rake.application.options.trace)
+        loggers << logfile if logfile
       end
 
-      instance_exec(resp, &block).to_s if block
-      resp
-    rescue RSpec::Expectations::ExpectationNotMetError => e
-      raise e if @options.fail_on_error
-      @errors << [@nodename, command, e]
+      xlogin_opts = Hash.new
+      xlogin_opts[:log]     = loggers unless loggers.empty?
+      xlogin_opts[:timeout] = timeout if timeout
 
-      message = "#{@session.name}: #{command}\n#{e}"
-      msg_output($stderr, "\n")
-      msg_output($stderr, message)
+      @session = Xlogin.get(name, xlogin_opts)
+
+      @session.extend(SessionExt)
+      @session.puts_proc = self.method(:puts)
+
+      @taskrunner.call(@session) if @taskrunner
+    rescue => e
+      raise e if fail_on_error
+      self.puts(e, io: $stdout)
     end
 
-    def msg(message)
-      return if @options.silent
-
-      if @options.always_multitask
-        message = message.lines.map { |line| "[#{@session.name}] #{line}" }.join
+    module SessionExt
+      def puts_proc=(method)
+        @puts_proc = method
       end
 
-      msg_output($stdout, message)
+      def cmd(*args)
+        super(*args).tap do |message|
+          break message if Rake.application.options.silent || !Rake.application.options.always_multitask
+          @puts_proc.call(message, io: $stdout)
+        end
+      end
 
-      # prepare prompt for next command
-      set(quiet: true) { cmd('') }
-    end
+      def readline(command)
+        prompt = StringIO.new
+        @puts_proc.call(cmd('').lines.last, io: prompt)
 
-    def ask(command = '', **opts, &block)
-      prompt = set(quiet: true) { cmd('') }.lines.last
-      prompt = "[#{@session.name}] #{prompt}" if @options.always_multitask
-
-      my_command = RakeTask.synchronize do
-        Readline.pre_input_hook = lambda do
+        my_command = RakeTask.mutex.synchronize do
+          Readline.pre_input_hook = lambda do
             Readline.insert_text(command)
             Readline.redisplay
+          end
+
+          Readline.readline("\e[E\e[K#{prompt.string.chomp}", false)
         end
-        # clear current line and redisplay prompt
-        Readline.readline("\e[E\e[K#{prompt}", false)
-      end
 
-      case my_command.strip
-      when command.strip, ''
-        # if my_command equals to '', it means to skip this command.
-        set(quiet: true) { cmd(my_command, &block) }
-      else
-        set(quiet: true) { cmd(my_command) }
-        ask(command, **opts, &block)
-      end
-    end
-
-    def msg_output(io, *messages)
-      RakeTask.synchronize do
-        messages.each { |message| io.puts message }
+        case my_command.strip
+        when /^\s*#/, ''
+          # do nothing and skip
+        when command.strip
+          cmd(my_command)
+        else
+          cmd(my_command)
+          readline(command)
+        end
       end
     end
 
-    def cmd_load(file)
-      content = File.exist?(file) ? IO.read(file) : ''
-      instance_eval(content)
-    end
   end
 end
