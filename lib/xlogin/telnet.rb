@@ -56,9 +56,13 @@ module Xlogin
             raise EOFError if bs == "\u001D" # <Ctrl-]> for quit
             @sock.syswrite(bs)
           when @sock
-            bs = fh.readpartial(1024)
-            $stdout.syswrite(bs)
-            @logger.call(bs)
+            begin
+              bs = fh.readpartial(1024)
+              $stdout.syswrite(bs)
+              @logger.call(bs)
+            rescue Errno::EAGAIN
+              retry
+            end
           end
         end
       end
