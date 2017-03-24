@@ -23,7 +23,7 @@ module Xlogin
           task all: names
 
           names.each do |name|
-            desc "#{description} -> '#{name}'"
+            desc "#{description} (#{name})"
             RakeTask.new(name, &block)
           end
         end
@@ -54,6 +54,7 @@ module Xlogin
     attr_accessor :lockfile
     attr_accessor :logfile
     attr_accessor :timeout
+    attr_accessor :uncomment
 
     def initialize(name, *args)
       @name          = name
@@ -62,6 +63,7 @@ module Xlogin
       @lockfile      = nil
       @logfile       = nil
       @timeout       = nil
+      @uncomment     = false
 
       @session       = nil
       @taskrunner    = nil
@@ -87,7 +89,9 @@ module Xlogin
     def define
       RakeTask.current_namespace do
         description = Rake.application.last_description || "Run '#{RakeTask.current_namespace}'"
-        desc "#{description} -> '#{name}'"
+
+        desc description
+        Rake.application.last_description = nil if uncomment
 
         if lockfile
           task(name => lockfile)
