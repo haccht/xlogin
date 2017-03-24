@@ -49,7 +49,6 @@ module Xlogin
 
 
     attr_reader   :name
-
     attr_accessor :fail_on_error
     attr_accessor :silent
     attr_accessor :lockfile
@@ -58,7 +57,6 @@ module Xlogin
 
     def initialize(name, *args)
       @name          = name
-
       @fail_on_error = true
       @silent        = false
       @lockfile      = nil
@@ -76,7 +74,7 @@ module Xlogin
       @taskrunner = block
     end
 
-    def puts(*messages, io: $stdout)
+    def safe_puts(*messages, io: $stdout)
       RakeTask.mutex.synchronize do
         messages.flat_map { |message| message.to_s.lines }.each do |line|
           line.gsub!("\r", "")
@@ -130,31 +128,31 @@ module Xlogin
       xlogin_opts[:timeout] = timeout if timeout
 
       @session = Xlogin.get(name, xlogin_opts)
-
       @session.extend(SessionExt)
-      @session.puts_proc = self.method(:puts)
+
+      %i( safe_puts fail_on_error ).each do |name|
+        method_proc = method(name)
+        @session.define_singleton_method(name) { |*args| method_proc.call(*args) }
+      end
 
       @taskrunner.call(@session) if @taskrunner
-    rescue => e
-      raise e if fail_on_error
-      self.puts(e, io: $stdout)
     end
 
     module SessionExt
-      def puts_proc=(method)
-        @puts_proc = method
-      end
-
       def cmd(*args)
         super(*args).tap do |message|
-          break message if Rake.application.options.silent || !Rake.application.options.always_multitask
-          @puts_proc.call(message, io: $stdout)
+          safe_puts(message, io: $stdout) unless Rake.application.options.silent || !Rake.application.options.always_multitask
+          yield message if block_given?
         end
+      rescue => e
+        raise e if fail_on_error
+        safe_puts("\n#{e}", io: $stdout)
+        cmd('')
       end
 
       def readline(command)
         prompt = StringIO.new
-        @puts_proc.call(cmd('').lines.last, io: prompt)
+        safe_puts(cmd('').lines.last, io: prompt)
 
         my_command = RakeTask.mutex.synchronize do
           Readline.pre_input_hook = lambda do
@@ -167,11 +165,12 @@ module Xlogin
 
         case my_command.strip
         when /^\s*#/, ''
-          # do nothing and skip
+          # do nothing and skip this command
         when command.strip
           cmd(my_command)
         else
           cmd(my_command)
+          # retry thid command
           readline(command)
         end
       end
