@@ -68,7 +68,7 @@ module Xlogin
       @session       = nil
       @taskrunner    = nil
 
-      yield self if block_given?
+      yield(self) if block_given?
       define
     end
 
@@ -146,11 +146,11 @@ module Xlogin
       def cmd(*args)
         super(*args).tap do |message|
           safe_puts(message, io: $stdout) unless Rake.application.options.silent || !Rake.application.options.always_multitask
-          yield message if block_given?
+          break yield(message) if block_given?
         end
       rescue => e
         raise e if fail_on_error
-        safe_puts("\n#{e}", io: $stdout)
+        safe_puts("\n#{e}", io: $stderr)
         cmd('')
       end
 
@@ -164,7 +164,7 @@ module Xlogin
             Readline.redisplay
           end
 
-          Readline.readline("\e[E\e[K#{prompt.string.chomp}", false)
+          Readline.readline("\e[E\e[K#{prompt.string.chomp}", true)
         end
 
         case my_command.strip
