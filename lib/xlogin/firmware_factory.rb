@@ -59,7 +59,7 @@ module Xlogin
     def list(*keys)
       @database.map do |nodename, args|
         item = args.merge(name: nodename)
-        keys = items.keys if keys.empty?
+        keys = args.keys if keys.empty?
         vals = item.values_at(*keys)
         (keys.size == 1) ? vals.shift : vals
       end
