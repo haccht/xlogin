@@ -40,7 +40,7 @@ module Xlogin
 
       if options[:list]
         factory = FirmwareFactory.new
-        puts factory.list(:name, :type).map { |e| e.join("\t") }
+        puts factory.list.map { |e| "#{e[:name]}\t#{e[:type]}" }
         exit 0
       end
 

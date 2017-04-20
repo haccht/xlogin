@@ -6,10 +6,10 @@ rancid clogin alternatives
 
 
 各個別装置毎のログインのための認証情報は`~/.xloginrc`へ記述しておく。  
-`.xloginrc`のフォーマットは下記。項目はタブ区切り。
+`.xloginrc`のフォーマットはDSL形式で下記の通り
 
 ~~~
-#hostname	hosttype	telnet_uri_scheme	options
-vyos01	vyos	telnet://vagrant:vagrant@127.0.0.1:2200
-vyos02	vyos	telnet://vagrant:vagrant@127.0.0.1:2201
+#hosttype	hostname	telnet_uri_scheme	options
+vyos	'vyos01',	'telnet://vagrant:vagrant@127.0.0.1:2200'
+vyos	'vyos02',	'telnet://vagrant:vagrant@127.0.0.1:2201'
 ~~~

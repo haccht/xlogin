@@ -42,47 +42,34 @@ module Xlogin
     def source(db_file)
       return unless File.exist?(db_file)
 
-      IO.readlines(db_file).each do |line|
-        next if line =~ /^\s*#/
-
-        nodename, nodetype, uri, optline = line.chomp.split(/\s+/)
-        opts = optline.to_s.split(',').map { |opt| opt.split('=') }
-        args = { type: nodetype, uri: uri, opts: Hash[*opts.flatten] }
-        @database[nodename] = args
-      end
+      content = IO.read(db_file)
+      instance_eval(content)
     end
 
-    def find(nodename)
-      @database[nodename]
+    def set(type, name, uri, opts = {})
+      @database[name] = { type: type, uri: uri, opts: opts }
     end
 
-    def list(*keys)
-      @database.map do |nodename, args|
-        item = args.merge(name: nodename)
-        keys = args.keys if keys.empty?
-        vals = item.values_at(*keys)
-        (keys.size == 1) ? vals.shift : vals
-      end
+    def list
+      @database.map { |nodename, args| args.merge(name: nodename) }
     end
 
-    def create(nodename, opts = {})
-      item = nodename.kind_of?(Hash) ? nodename : find(nodename)
-      raise Xlogin::GeneralError.new("Invalid target - #{nodename}") unless item && item[:type] && item[:uri]
+    def build(item, args = {})
+      item     = item.kind_of?(Hash) ? item : @database[item]
+      item_uri = item[:uri]
+      firmware = Xlogin::FirmwareFactory[item[:type]]
+      raise Xlogin::GeneralError.new("Invalid target - #{nodename}") unless item && item_uri && firmware
 
-      args = item[:opts].merge(opts).reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
-      firmware = send("build_#{item[:type]}")
-      firmware.run(item[:uri], args)
+      opts = item[:opts] || {}
+      opts = opts.merge(args).reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
+      firmware.run(item_uri, opts)
     end
 
     def method_missing(name, *args, &block)
-      if name.to_s =~ /^build_(\w+)$/
-        firmware = Xlogin::FirmwareFactory[$1.to_s.downcase]
-        raise Xlogin::GeneralError.new("'#{$1}' not found") unless firmware
+      firmware = Xlogin::FirmwareFactory[name]
+      super unless firmware && args.size >= 2
 
-        firmware
-      else
-        super(name, *args, &block)
-      end
+      set(name, *args)
     end
 
   end

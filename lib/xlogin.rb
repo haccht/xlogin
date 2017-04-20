@@ -5,7 +5,12 @@ module Xlogin
   require 'xlogin/firmware'
   require 'xlogin/firmware_factory'
 
-  SourceDir = [ENV['HOME'], ENV['XLOGIN_HOME'], Dir.pwd]
+  SourceDir = [
+    File.join(File.dirname(__FILE__), 'xlogin'),
+    ENV['HOME'],
+    ENV['XLOGIN_HOME'],
+    Dir.pwd
+  ]
 
   class GeneralError < StandardError; end
 
@@ -26,15 +31,10 @@ module Xlogin
 
     def get(nodename, opts = {})
       @factory ||= Xlogin::FirmwareFactory.new
-
-      session = @factory.create(nodename, opts)
+      session = @factory.build(nodename, opts)
 
       if block_given?
-        begin
-          yield session
-        ensure
-          session.close
-        end
+        begin yield session ensure session.close end
       else
         session
       end
