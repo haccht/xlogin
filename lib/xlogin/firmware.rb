@@ -51,13 +51,18 @@ module Xlogin
         end
       end
 
-      if enable = opts.delete(:enable)
-        name, password = ['enable', *enable.split(':')][-2..-1]
-        klass.class_exec(name, password) do |name, password|
-          alias_method "original_#{name}".to_sym, name.to_sym
-          define_method(:enable) do |args = password|
-            send("original_#{name}", args)
+      if grant = opts.delete(:grant)
+        open, password, close = grant.split(':')
+        klass.class_exec(open, password, close) do |open, password, close|
+          alias_method "original_#{open}".to_sym, open.to_sym
+          define_method(open) do |arg = password, &block|
+            send("original_#{open}", arg)
+            if block
+              block.call
+              cmd(close)
+            end
           end
+          alias_method :enable, open
         end
       end
 
