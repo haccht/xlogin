@@ -1,9 +1,11 @@
 $:.unshift File.dirname(__FILE__)
 
+require 'xlogin/firmware'
+require 'xlogin/firmware_factory'
+require 'xlogin/version'
+
 module Xlogin
 
-  require 'xlogin/firmware'
-  require 'xlogin/firmware_factory'
 
   SourceDir = [
     File.join(File.dirname(__FILE__), 'xlogin'),
