@@ -74,7 +74,6 @@ module Xlogin
           userinfo: uri.userinfo,
           timeout:  @timeout,
           prompts:  @prompts,
-          methods:  @methods,
         }.merge(opts)
       )
     end

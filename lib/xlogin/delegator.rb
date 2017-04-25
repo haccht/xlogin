@@ -6,7 +6,7 @@ module Xlogin
     module FirmwareDelegator
       def run(uri, opts = {})
         if hostname = opts.delete(:delegate)
-          delegatee = FirmwareFactory.new.find(hostname)
+          delegatee = FirmwareFactory.new.get(hostname)
           firmware  = FirmwareFactory[delegatee[:type]]
 
           firmware.on_exec do |args|
@@ -19,12 +19,15 @@ module Xlogin
             end
           end
 
-          login_method = firmware.instance_eval { @methods[:login] }
-          firmware.bind(:login,    &@methods[:login])
-          firmware.bind(:delegate, &@methods[:delegate])
+          delegate = firmware.instance_eval { @methods[:delegate] }
+          login1   = firmware.instance_eval { @methods[:login] }
+          login2   = @methods[:login]
 
-          session = firmware.run(uri, opts.merge(delegatee[:opts]))
-          session.delegate(URI(delegatee[:uri]), &login_method)
+          bind(:login, &login1)
+
+          session = super(delegatee[:uri], opts.merge(delegatee[:opts]))
+          session.class.class_eval { define_method(:login, &login2) }
+          session.instance_exec(URI(uri), &delegate)
           session
         else
           session = super(uri, opts)
