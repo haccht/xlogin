@@ -7,9 +7,11 @@ module Xlogin
       def run(uri, opts = {})
         if hostname = opts.delete(:delegate)
           delegatee = FirmwareFactory.new.get(hostname)
-          firmware  = FirmwareFactory[delegatee[:type]]
+          delegatee_os  = FirmwareFactory[delegatee[:type]]
+          delegatee_uri = URI(delegatee[:uri])
+          delegatee_uri.userinfo = ''
 
-          firmware.on_exec do |args|
+          delegatee_os.on_exec do |args|
             if args['String'].strip =~ /^kill-session(?:\(([\s\w]+)\))?$/
               puts($1.to_s)
               close
@@ -19,14 +21,14 @@ module Xlogin
             end
           end
 
-          delegate = firmware.instance_eval { @methods[:delegate] }
-          login1   = firmware.instance_eval { @methods[:login] }
+          delegate = delegatee_os.instance_eval { @methods[:delegate] }
+          login1   = delegatee_os.instance_eval { @methods[:login] }
           login2   = @methods[:login]
 
-          bind(:login, &login1)
+          session = super(delegatee_uri, opts.merge(delegatee[:opts]))
+          session.instance_exec(*delegatee_uri.userinfo.split(':'), &login1)
 
-          session = super(delegatee[:uri], opts.merge(delegatee[:opts]))
-          session.class.class_eval { define_method(:login, &login2) }
+          session.define_singleton_method(:login, &login2)
           session.instance_exec(URI(uri), &delegate)
           session
         else
