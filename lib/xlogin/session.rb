@@ -9,10 +9,9 @@ module Xlogin
       @name     = opts[:node]
       @node     = opts[:node]
       @port     = opts[:port]
-      @userinfo = opts[:userinfo].split(':')
+      @userinfo = opts[:userinfo].to_s.split(':')
       raise Xlogin::GeneralError.new('Argument error.') unless @node && @port
 
-      @methods  = opts[:methods] || {}
       @prompts  = opts[:prompts] || [[/[$%#>] ?\z/n, nil]]
       @timeout  = opts[:timeout] || 60
 
