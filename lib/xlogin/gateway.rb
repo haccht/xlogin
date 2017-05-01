@@ -4,9 +4,9 @@ require 'net/ssh/gateway'
 module Xlogin
   module Session
 
-    alias_method :original_configure, :configure
-    def configure(**opts)
-      original_configure(**opts)
+    alias_method :original_configure_session, :configure_session
+    def configure_session(**opts)
+      original_configure_session(**opts)
 
       if uri = opts[:via]
         gateway = URI(uri)
