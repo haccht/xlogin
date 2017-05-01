@@ -50,6 +50,10 @@ module Xlogin
       @database[name] = { type: type, uri: uri, opts: opts }
     end
 
+    def get(name)
+      @database[name]
+    end
+
     def list
       @database.map { |nodename, args| args.merge(name: nodename) }
     end

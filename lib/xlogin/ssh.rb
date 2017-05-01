@@ -6,7 +6,7 @@ module Xlogin
     include Session
 
     def initialize(**opts)
-      configure(opts.merge(port: opts[:port] || 22))
+      configure_session(opts.merge(port: opts[:port] || 22))
 
       begin
         username, password = *@userinfo

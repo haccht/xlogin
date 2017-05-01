@@ -58,9 +58,8 @@ module Xlogin
           define_method(open) do |arg = password, &block|
             send("original_#{open}", arg)
             if block
-              resp = block.call
+              block.call
               cmd(close)
-              resp
             end
           end
           alias_method :enable, open

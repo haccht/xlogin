@@ -131,21 +131,27 @@ module Xlogin
       xlogin_opts[:log]     = loggers unless loggers.empty?
       xlogin_opts[:timeout] = timeout if timeout
 
-      @session = Xlogin.get(name, xlogin_opts)
-      @session.extend(SessionExt)
+      begin
+        @session = Xlogin.get(name, xlogin_opts)
+        @session.extend(SessionExt)
 
-      %i( safe_puts fail_on_error ).each do |name|
-        method_proc = method(name)
-        @session.define_singleton_method(name) { |*args| method_proc.call(*args) }
+        %i( safe_puts silent fail_on_error ).each do |name|
+          method_proc = method(name)
+          @session.define_singleton_method(name) { |*args| method_proc.call(*args) }
+        end
+      rescue => e
+        raise e if fail_on_error
+        safe_puts(e, io: $stderr)
       end
 
-      @taskrunner.call(@session) if @taskrunner
+
+      @taskrunner.call(@session) if @taskrunner && @session
     end
 
     module SessionExt
       def cmd(*args)
         super(*args).tap do |message|
-          safe_puts(message, io: $stdout) unless Rake.application.options.silent || !Rake.application.options.always_multitask
+          safe_puts(message, io: $stdout) unless silent || Rake.application.options.silent || !Rake.application.options.always_multitask
           break yield(message) if block_given?
         end
       rescue => e
@@ -177,6 +183,10 @@ module Xlogin
           # retry thid command
           readline(command)
         end
+      end
+
+      def sync(&block)
+        RakeTask.mutex.synchronize(&block) if block
       end
     end
 

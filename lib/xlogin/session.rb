@@ -5,7 +5,7 @@ module Xlogin
 
     attr_reader :name
 
-    def configure(**opts)
+    def configure_session(**opts)
       @name     = opts[:node]
       @node     = opts[:node]
       @port     = opts[:port]

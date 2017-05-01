@@ -8,7 +8,7 @@ module Xlogin
     include Session
 
     def initialize(**opts)
-      configure(opts.merge(port: opts[:port] || 23))
+      configure_session(opts.merge(port: opts[:port] || 23))
 
       super(
         'Host'    => @node,
