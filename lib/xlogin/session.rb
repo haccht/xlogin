@@ -3,7 +3,7 @@ require 'stringio'
 module Xlogin
   module Session
 
-    attr_reader :name
+    attr_accessor :name
 
     def configure_session(**opts)
       @name     = opts[:node]
