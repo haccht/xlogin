@@ -59,7 +59,7 @@ module Xlogin
     def initialize(name, *args)
       @name          = name
       @fail_on_error = true
-      @silent        = false
+      @silent        = Rake.application.options.silent
       @lockfile      = nil
       @logfile       = nil
       @timeout       = nil
@@ -76,11 +76,13 @@ module Xlogin
       @taskrunner = block
     end
 
-    def safe_puts(*messages, io: $stdout)
+    def safe_puts(*messages, **opts)
+      opts[:io] ||= $stdout
+      return if @silent && !opts[:force]
       RakeTask.mutex.synchronize do
         messages.flat_map { |message| message.to_s.lines }.each do |line|
           line.gsub!("\r", "")
-          io.puts (Rake.application.options.always_multitask)? "#{name}\t#{line}" : line
+          opts[:io].puts (Rake.application.options.always_multitask)? "#{name}\t#{line}" : line
         end
       end
     end
@@ -120,7 +122,7 @@ module Xlogin
 
     def run_task
       loggers = []
-      loggers << $stdout unless silent || Rake.application.options.silent || Rake.application.options.always_multitask
+      loggers << $stdout unless silent || Rake.application.options.always_multitask
 
       if logfile
         mkdir_p(File.dirname(logfile), verbose: Rake.application.options.trace)
@@ -135,34 +137,27 @@ module Xlogin
         @session = Xlogin.get(name, xlogin_opts)
         @session.extend(SessionExt)
 
-        %i( safe_puts silent fail_on_error ).each do |name|
-          method_proc = method(name)
-          @session.define_singleton_method(name) { |*args| method_proc.call(*args) }
-        end
+        method_proc = method(:safe_puts)
+        @session.define_singleton_method(:safe_puts) { |*args| method_proc.call(*args) }
+
+        @taskrunner.call(@session) if @taskrunner && @session
       rescue => e
         raise e if fail_on_error
-        safe_puts(e, io: $stderr)
+        safe_puts(e, io: $stderr, force: true)
       end
-
-
-      @taskrunner.call(@session) if @taskrunner && @session
     end
 
     module SessionExt
       def cmd(*args)
-        super(*args).tap do |message|
-          safe_puts(message, io: $stdout) unless silent || Rake.application.options.silent || !Rake.application.options.always_multitask
-          break yield(message) if block_given?
-        end
-      rescue => e
-        raise e if fail_on_error
-        safe_puts("\n#{e}", io: $stderr)
-        cmd('')
+        message = super(*args)
+        safe_puts(message, io: $stdout) if Rake.application.options.always_multitask
+        message = yield(message) if block_given?
+        message
       end
 
       def readline(command)
         prompt = StringIO.new
-        safe_puts(cmd('').lines.last, io: prompt)
+        safe_puts(cmd('').lines.last, io: prompt, force: true)
 
         my_command = RakeTask.mutex.synchronize do
           Readline.pre_input_hook = lambda do

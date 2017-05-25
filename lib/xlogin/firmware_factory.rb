@@ -47,7 +47,7 @@ module Xlogin
     end
 
     def set(type, name, uri, opts = {})
-      @database[name] = { type: type, uri: uri, opts: opts }
+      @database[name] = { name: name, type: type, uri: uri, opts: opts }
     end
 
     def get(name)
@@ -66,7 +66,10 @@ module Xlogin
 
       opts = item[:opts] || {}
       opts = opts.merge(args).reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
-      firmware.run(item_uri, opts)
+
+      session = firmware.run(item_uri, opts)
+      session.name = item[:name]
+      session
     end
 
     def method_missing(name, *args, &block)
