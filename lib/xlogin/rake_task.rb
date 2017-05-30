@@ -77,6 +77,7 @@ module Xlogin
     end
 
     def safe_puts(*messages, **opts)
+      opts[:io] ||= $stdout
       return if @silent && !opts[:force]
       RakeTask.mutex.synchronize do
         messages.flat_map { |message| message.to_s.lines }.each do |line|
