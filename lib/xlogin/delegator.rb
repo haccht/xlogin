@@ -5,12 +5,14 @@ module Xlogin
 
     module FirmwareDelegator
       def run(uri, opts = {})
-        if hostname = opts.delete(:delegate)
-          delegatee = FirmwareFactory.new.get(hostname)
-          delegatee_os  = FirmwareFactory[delegatee[:type]]
-          delegatee_uri = URI(delegatee[:uri])
+        uri = URI(uri.to_s)
 
-          delegatee_os.on_exec do |args|
+        if hostname = opts.delete(:delegate)
+          target = FirmwareFactory.new.get(hostname)
+          target_os  = FirmwareFactory[target[:type]]
+          target_uri = URI(target[:uri])
+
+          target_os.on_exec do |args|
             if args['String'].strip =~ /^kill-session(?:\(([\s\w]+)\))?$/
               puts($1.to_s)
               close
@@ -20,18 +22,15 @@ module Xlogin
             end
           end
 
-          delegate = delegatee_os.instance_eval { @methods[:delegate] }
-          login1   = delegatee_os.instance_eval { @methods[:login] }
-          login2   = @methods[:login]
+          login    = @methods[:login]
+          delegate = @methods[:delegate]
 
-          userinfo = delegatee_uri.userinfo.dup
-          delegatee_uri.userinfo = ''
+          userinfo = uri.userinfo.dup
+          uri.userinfo = ''
 
-          session = super(delegatee_uri, opts.merge(delegatee[:opts]))
-          session.instance_exec(*userinfo.split(':'), &login1)
-
-          session.define_singleton_method(:login, &login2)
-          session.instance_exec(URI(uri), &delegate)
+          session = target_os.run(uri, opts)
+          session.instance_exec(*userinfo.split(':'), &login)
+          session.instance_exec(target_uri, opts, &delegate)
           session
         else
           session = super(uri, opts)
@@ -40,6 +39,33 @@ module Xlogin
     end
 
     prepend FirmwareDelegator
+
+    ### Usage:
+    ## Write xloginrc file
+    #
+    # vyos       'vyos01',          'telnet://user:pass@host:port'
+    # consolesrv 'vyos01::console', 'telnet://console_user:console_pass@console_host:console_port', delegate: 'vyos01'
+    #
+    ## Write firmware definition
+    #
+    # require 'timeout'
+    # Xlogin.configure :consolesrv do |os|
+    #   os.bind(:login) do |*args|
+    #    username, password = *args
+    #    waitfor(/login:\s*\z/)    && puts(username)
+    #    waitfor(/Password:\s*\z/) && puts(password)
+    #  end
+    #
+    #  os.bind(:delegate) do |uri, opts|
+    #    begin
+    #      waittime = 3
+    #      Timeout.timeout(waittime) do
+    #        login(*uri.userinfo.split(':'), opts)
+    #      end
+    #    rescue Timeout::Error
+    #    end
+    #  end
+    #end
 
   end
 end
