@@ -6,7 +6,7 @@ module Xlogin
 
     def initialize
       @timeout = 5
-      @on_exec  = nil
+      @on_exec = nil
       @prompts = Array.new
       @methods = Hash.new
     end
@@ -68,7 +68,7 @@ module Xlogin
 
       klass.new(
         {
-          node:     uri.host,
+          host:     uri.host,
           port:     uri.port,
           userinfo: uri.userinfo,
           timeout:  @timeout,

@@ -12,16 +12,6 @@ module Xlogin
           target_os  = FirmwareFactory[target[:type]]
           target_uri = URI(target[:uri])
 
-          target_os.on_exec do |args|
-            if args['String'].strip =~ /^kill-session(?:\(([\s\w]+)\))?$/
-              puts($1.to_s)
-              close
-            else
-              instance_exec(args, &@on_exec) if @on_exec
-              do_cmd(args)
-            end
-          end
-
           login    = @methods[:login]
           delegate = @methods[:delegate]
 

@@ -11,7 +11,7 @@ module Xlogin
       configure_session(opts.merge(port: opts[:port] || 23))
 
       super(
-        'Host'    => @node,
+        'Host'    => @host,
         'Port'    => @port,
         'Timeout' => @timeout,
         'Prompt'  => Regexp.union(*@prompts.map(&:first))

@@ -3,19 +3,20 @@ require 'stringio'
 module Xlogin
   module Session
 
+    attr_reader   :opts
     attr_accessor :name
 
     def configure_session(**opts)
-      @name     = opts[:node]
-      @node     = opts[:node]
-      @port     = opts[:port]
-      @userinfo = opts[:userinfo].to_s.split(':')
-      raise Xlogin::GeneralError.new('Argument error.') unless @node && @port
+      @opts     = opts.dup
+      @host     = @name = @opts.delete(:host)
+      @port     = @opts.delete(:port)
+      @userinfo = @opts.delete(:userinfo).to_s.split(':')
+      raise Xlogin::GeneralError.new('Argument error.') unless @host && @port
 
-      @prompts  = opts[:prompts] || [[/[$%#>] ?\z/n, nil]]
-      @timeout  = opts[:timeout] || 60
+      @prompts  = @opts.delete(:prompts) || [[/[$%#>] ?\z/n, nil]]
+      @timeout  = @opts.delete(:timeout) || 60
 
-      @loglist  = [opts[:log]].flatten.compact
+      @loglist  = [@opts.delete(:log)].flatten.compact
       @logger   = update_logger
     end
 

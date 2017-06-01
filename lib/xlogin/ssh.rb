@@ -12,7 +12,7 @@ module Xlogin
         username, password = *@userinfo
 
         @ssh = Net::SSH.start(
-          @node,
+          @host,
           username,
           :port =>     @port,
           :timeout =>  @timeout,

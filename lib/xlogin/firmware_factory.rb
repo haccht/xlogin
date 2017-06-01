@@ -46,28 +46,28 @@ module Xlogin
       instance_eval(content)
     end
 
-    def set(type, name, uri, opts = {})
-      @database[name] = { name: name, type: type, uri: uri, opts: opts }
-    end
-
     def get(name)
       @database[name]
+    end
+
+    def set(type, name, uri, opts = {})
+      @database[name] = { name: name, type: type, uri: uri, opts: opts }
     end
 
     def list
       @database.map { |nodename, args| args.merge(name: nodename) }
     end
 
-    def build(item, args = {})
-      item     = item.kind_of?(Hash) ? item : @database[item]
-      item_uri = item[:uri]
-      firmware = Xlogin::FirmwareFactory[item[:type]]
-      raise Xlogin::GeneralError.new("Invalid target - #{nodename}") unless item && item_uri && firmware
+    def build(name, args = {})
+      item     = item.kind_of?(Hash) ? name : @database[name]
+      item_uri = item[:uri] if item
+      firmware = Xlogin::FirmwareFactory[item[:type]] if item
+      raise Xlogin::GeneralError.new("Hostname '#{name}' not found ") unless item && item_uri && firmware
 
       opts = item[:opts] || {}
       opts = opts.merge(args).reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
 
-      session = firmware.run(item_uri, opts)
+      session = firmware.dup.run(item_uri, opts)
       session.name = item[:name]
       session
     end

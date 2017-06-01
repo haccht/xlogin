@@ -40,18 +40,19 @@ module Xlogin
       options = Hash.new
 
       opt = OptionParser.new
-      opt.on('-e', '--enable', 'Try to gain enable priviledge.') { |v| options[:e] = v }
-      opt.on('-l', '--log',    'Enable logging.')                { |v| options[:l] = v }
-      opt.on('-H', 'Display hostnames for each response.')       { |v| options[:H] = v }
+      opt.on('-F', '--force',  'Automatically reply "yes" if confirmed.') { |v| options[:F] = v }
+      opt.on('-e', '--enable', 'Try to gain enable priviledge.')          { |v| options[:e] = v }
+      opt.on('-l', '--log',    'Enable logging.')                         { |v| options[:l] = v }
+      opt.on('-H', 'Display hostnames for each response.')   { |v| options[:H] = v }
 
-      opt.on('-f FILE',  'Read target hostnames from FILE.')     { |v| options[:f] = v }
-      opt.on('-r FILE',  'Load extention library.')              { |v| options[:r] = v }
+      opt.on('-f FILE',  'Read target hostnames from FILE.') { |v| options[:f] = v }
+      opt.on('-r FILE',  'Load extention library.')          { |v| options[:r] = v }
 
-      opt.on('-x VALUE', 'Read commands from VALUE.')            { |v| options[:x] = v }
-      opt.on('-c VALUE')                                         { |v| options[:c] = v }
+      opt.on('-x VALUE', 'Read commands from VALUE.')        { |v| options[:x] = v }
+      opt.on('-c VALUE')                                     { |v| options[:c] = v }
 
-      opt.on('-p VALUE', 'Specify concurrency pool size.')       { |v| options[:p] = v }
-      opt.on('-i VALUE', 'Specify interval time [sec].')         { |v| options[:i] = v }
+      opt.on('-p VALUE', 'Specify concurrency pool size.')   { |v| options[:p] = v }
+      opt.on('-i VALUE', 'Specify interval time [sec].')     { |v| options[:i] = v }
 
       opt.banner += ' HOST...'
       opt.summary_width = 16
@@ -91,12 +92,13 @@ module Xlogin
           pool.run do
             begin
               resp    = StringIO.new
-
+              force   = options[:F] || false
               loggers = []
               loggers << $stdout unless size > 1
               loggers << (URI.regexp =~ node ? URI(node).host : node) + ".log" if options[:l]
 
-              session = Xlogin.get(node, log: loggers)
+
+              session = Xlogin.get(node, force: force, log: loggers)
               session.enable if options[:e] && session.respond_to?(:enable)
 
               if options[:x]
