@@ -19,9 +19,6 @@ module Xlogin
         current_namespace do
           description = Rake.application.last_description || "Run '#{RakeTask.current_namespace}'"
 
-          desc description
-          task all: names
-
           names.each do |name|
             desc "#{description} (#{name})"
             RakeTask.new(name, &block)
@@ -106,15 +103,6 @@ module Xlogin
         else
           task(name) do
             run_task
-          end
-        end
-
-        [logfile, lockfile].each do |file|
-          next unless file
-
-          desc 'Remove any temporary products'
-          task 'clean' do
-            rm(file, verbose: true) if File.exist?(file)
           end
         end
       end
