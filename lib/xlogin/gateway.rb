@@ -21,8 +21,8 @@ module Xlogin
             port: gateway.port || 22
           )
 
-          @port = @gateway.open(@node, @port)
-          @node = '127.0.0.1'
+          @port = @gateway.open(@host, @port)
+          @host = '127.0.0.1'
         end
       end
     end

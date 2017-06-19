@@ -67,7 +67,7 @@ module Xlogin
       opts = item[:opts] || {}
       opts = opts.merge(args).reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
 
-      session = firmware.run(item_uri, opts)
+      session = firmware.dup.run(item_uri, opts)
       session.name = item[:name]
       session
     end

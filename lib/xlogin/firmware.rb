@@ -68,7 +68,7 @@ module Xlogin
 
       klass.new(
         {
-          node:     uri.host,
+          host:     uri.host,
           port:     uri.port,
           userinfo: uri.userinfo,
           timeout:  @timeout,
