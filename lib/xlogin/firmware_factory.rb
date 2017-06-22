@@ -51,25 +51,31 @@ module Xlogin
     end
 
     def set(type, name, uri, opts = {})
-      @database[name] = { name: name, type: type, uri: uri, opts: opts }
+      @database[name] = opts.merge(uri: uri, type: type, name: name)
     end
 
     def list
-      @database.map { |nodename, args| args.merge(name: nodename) }
+      @database.values
     end
 
-    def build(name, args = {})
-      item     = item.kind_of?(Hash) ? name : @database[name]
-      item_uri = item[:uri] if item
-      firmware = Xlogin::FirmwareFactory[item[:type]] if item
-      raise Xlogin::GeneralError.new("Hostname '#{name}' not found ") unless item && item_uri && firmware
+    def build(args)
+      uri  = args.delete(:uri)
+      type = args.delete(:type)
+      name = args.delete(:name)
+      opts = args.reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
+      raise Xlogin::GeneralError.new("Host not found: #{args}") unless uri && type
 
-      opts = item[:opts] || {}
-      opts = opts.merge(args).reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
-
-      session = firmware.dup.run(item_uri, opts)
-      session.name = item[:name]
+      firmware = Xlogin::FirmwareFactory[type].dup
+      session  = firmware.run(uri, opts)
+      session.name = name
       session
+    end
+
+    def build_from_hostname(hostname, **args)
+      host = get(hostname)
+      raise Xlogin::GeneralError.new("Host not found: #{hostname}") unless host
+
+      build(get(hostname).merge(args))
     end
 
     def method_missing(name, *args, &block)
