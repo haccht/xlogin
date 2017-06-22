@@ -31,9 +31,9 @@ module Xlogin
       Xlogin::FirmwareFactory.register(new_name, firmware)
     end
 
-    def get(nodename, opts = {})
+    def get(hostname, args = {})
       @factory ||= Xlogin::FirmwareFactory.new
-      session = @factory.build(nodename, opts)
+      session = @factory.build_from_hostname(hostname, args)
 
       if block_given?
         begin yield session ensure session.close end
