@@ -2,6 +2,7 @@ $:.unshift File.dirname(__FILE__)
 
 require 'xlogin/firmware'
 require 'xlogin/firmware_factory'
+require 'xlogin/queue'
 require 'xlogin/version'
 
 module Xlogin

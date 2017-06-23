@@ -72,6 +72,9 @@ module Xlogin
     end
 
     def build_from_hostname(hostname, **args)
+      host = get(hostname)
+      raise Xlogin::GeneralError.new("Host not found: #{hostname}") unless host
+
       build(get(hostname).merge(args))
     end
 
