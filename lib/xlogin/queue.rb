@@ -12,11 +12,17 @@ module Xlogin
     end
 
     def initialize(hostname, **args)
-      @name = hostname
-      @args = args
-
+      @name  = hostname
+      @args  = args
       @mutex = Mutex.new
-      @timeout = @args[:timeout] || @args['timeout'] || @args['Timeout'] || 10
+
+      hostinfo = Xlogin::FirmwareFactory.new.get(hostname)
+      if hostinfo
+        firmware = Xlogin::FirmwareFactory[hostinfo[:type]]
+        @timeout = firmware.timeout
+      end
+
+      @timeout = @args['Timeout'] || @args['timeout' || @args[:timeout]] || @timeout || 10
     end
 
     def with(timeout: @timeout, limit: 1)
