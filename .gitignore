@@ -54,5 +54,7 @@ build-iPhoneSimulator/
 .rvmrc
 
 # End of https://www.gitignore.io/api/ruby
+/lib/xlogin/.xloginrc
+/lib/xlogin/_xloginrc
 /lib/xlogin/firmwares/*
 !/lib/xlogin/firmwares/vyos.rb

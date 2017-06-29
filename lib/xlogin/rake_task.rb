@@ -9,7 +9,7 @@ module Xlogin
     class << self
       include Rake::DSL
 
-      def bulk(names, &block)
+      def bulk(names, **xlogin_opts, &block)
         names = names.map(&:strip).grep(/^\s*[^#]/)
 
         namecount = names.uniq.inject({}) { |a, e| a.merge(e => names.count(e)) }
@@ -21,7 +21,7 @@ module Xlogin
 
           names.each do |name|
             desc "#{description} (#{name})"
-            RakeTask.new(name, &block)
+            RakeTask.new(name, **xlogin_opts, &block)
           end
         end
       end
@@ -50,17 +50,16 @@ module Xlogin
     attr_accessor :silent
     attr_accessor :lockfile
     attr_accessor :logfile
-    attr_accessor :timeout
     attr_accessor :uncomment
 
-    def initialize(name, *args)
+    def initialize(name, **xlogin_opts)
       @name          = name
       @fail_on_error = true
       @silent        = Rake.application.options.silent
       @lockfile      = nil
       @logfile       = nil
-      @timeout       = nil
       @uncomment     = false
+      @xlogin_opts   = xlogin_opts
 
       @session       = nil
       @taskrunner    = nil
@@ -117,12 +116,10 @@ module Xlogin
         loggers << logfile if logfile
       end
 
-      xlogin_opts = Hash.new
-      xlogin_opts[:log]     = loggers unless loggers.empty?
-      xlogin_opts[:timeout] = timeout if timeout
+      @xlogin_opts[:log] = loggers unless loggers.empty?
 
       begin
-        @session = Xlogin.get(name, xlogin_opts)
+        @session = Xlogin.get(name, @xlogin_opts.dup)
         @session.extend(SessionExt)
 
         method_proc = method(:safe_puts)
