@@ -12,8 +12,8 @@ module Xlogin
           target_os  = FirmwareFactory[target[:type]]
           target_uri = URI(target[:uri])
 
-          login    = @methods[:login]
-          delegate = @methods[:delegate]
+          login    = @methods.delete(:login)
+          delegate = @methods.delete(:delegate)
 
           userinfo = uri.userinfo.dup
           uri.userinfo = ''
@@ -50,7 +50,7 @@ module Xlogin
     #    begin
     #      waittime = 3
     #      Timeout.timeout(waittime) do
-    #        login(*uri.userinfo.split(':'), opts)
+    #        login(*uri.userinfo.split(':'))
     #      end
     #    rescue Timeout::Error
     #    end

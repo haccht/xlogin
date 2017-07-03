@@ -50,8 +50,9 @@ module Xlogin
       @database[name]
     end
 
-    def set(type, name, uri, opts = {})
-      @database[name] = opts.merge(uri: uri, type: type, name: name)
+    def set(**opts)
+      opts[:type] = opts[:type].to_s
+      @database[opts[:name]] = opts
     end
 
     def list
@@ -60,7 +61,7 @@ module Xlogin
 
     def build(args)
       uri  = args.delete(:uri)
-      type = args.delete(:type)
+      type = args.delete(:type).to_s
       name = args.delete(:name)
       opts = args.reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
       raise Xlogin::GeneralError.new("Host not found: #{args}") unless uri && type
@@ -82,7 +83,11 @@ module Xlogin
       firmware = Xlogin::FirmwareFactory[name]
       super unless firmware && args.size >= 2
 
-      set(name, *args)
+      type = name
+      name = args.shift
+      uri  = args.shift
+      opts = args.shift || {}
+      set(type: type, name: name, uri: uri, **opts)
     end
 
   end
