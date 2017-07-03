@@ -66,7 +66,7 @@ module Xlogin
           end
         end
       end
-    rescue EOFError
+    rescue EOFError, Errno::ECONNRESET
       $stdout.puts "\r\n", "Conneciton closed."
       self.close
     ensure

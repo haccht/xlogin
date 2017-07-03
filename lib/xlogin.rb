@@ -19,6 +19,7 @@ module Xlogin
 
   class << self
     def configure(name)
+      name = name.to_s
       firmware = Xlogin::FirmwareFactory[name] || Xlogin::Firmware.new
       yield firmware if block_given?
 
