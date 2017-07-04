@@ -16,9 +16,8 @@ module Xlogin
       @args  = args
       @mutex = Mutex.new
 
-      hostinfo = Xlogin::FirmwareFactory.new.get(hostname)
-      if hostinfo
-        firmware = Xlogin::FirmwareFactory[hostinfo[:type]]
+      if hostinfo = Xlogin.factory.get(hostname)
+        firmware = Xlogin.factory.template_for(hostinfo[:type])
         @timeout = firmware.timeout
       end
 

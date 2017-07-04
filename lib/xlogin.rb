@@ -7,35 +7,52 @@ require 'xlogin/version'
 
 module Xlogin
 
+  ## where firmware templates locate.
+  TemplateDir = File.join(File.dirname(__FILE__), 'xlogin', 'firmwares')
 
-  SourceDir = [
+  ## where instance parameter definitions locate.
+  SourceDirs  = [
     File.join(File.dirname(__FILE__), 'xlogin'),
-    ENV['HOME'],
-    ENV['XLOGIN_HOME'],
+    ENV['HOME'], ENV['XLOGIN_HOME'],
     Dir.pwd
   ]
 
   class GeneralError < StandardError; end
 
   class << self
-    def configure(name)
-      name = name.to_s
-      firmware = Xlogin::FirmwareFactory[name] || Xlogin::Firmware.new
-      yield firmware if block_given?
+    def factory
+      unless @factory
+        @factory = Xlogin::FirmwareFactory.instance
 
-      Xlogin::FirmwareFactory.register(name, firmware)
+        Dir.entries(TemplateDir).each do |file|
+          @factory.register_template_file(File.join(template_dir, file))
+        end
+
+        SourceDirs.compact.uniq.each do |dir|
+          @factory.source(File.join(dir, '.xloginrc'))
+          @factory.source(File.join(dir, '_xloginrc'))
+        end
+      end
+
+      @factory
+    end
+
+    def configure(name)
+      template = factory.template_for(name) || Xlogin::Firmware.new
+      yield template if block_given?
+
+      factory.register_template(name, template)
     end
 
     def alias(new_name, original_name)
-      firmware = Xlogin::FirmwareFactory[original_name]
-      raise Xlogin::GeneralError.new("'#{original_name}' not found") unless firmware
+      template = factory.template_for(original_name)
+      raise Xlogin::GeneralError.new("'#{original_name}' not found") unless template
 
-      Xlogin::FirmwareFactory.register(new_name, firmware)
+      factory.register_template(new_name, template)
     end
 
     def get(hostname, args = {})
-      @factory ||= Xlogin::FirmwareFactory.new
-      session = @factory.build_from_hostname(hostname, args)
+      session = factory.build_from_hostname(hostname, args)
 
       if block_given?
         begin yield session ensure session.close end
@@ -43,10 +60,6 @@ module Xlogin
         session
       end
     end
-
   end
-
-  Directory = File.join(File.dirname(__FILE__), 'xlogin', 'firmwares')
-  Xlogin::FirmwareFactory.register_dir(Directory)
 
 end
