@@ -25,7 +25,7 @@ module Xlogin
         @factory = Xlogin::FirmwareFactory.instance
 
         Dir.entries(TemplateDir).each do |file|
-          @factory.register_template_file(File.join(template_dir, file))
+          @factory.register_template_file(File.join(TemplateDir, file))
         end
 
         SourceDirs.compact.uniq.each do |dir|
