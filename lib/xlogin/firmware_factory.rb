@@ -1,42 +1,28 @@
 require 'uri'
+require 'singleton'
 require 'stringio'
 require 'xlogin/firmware'
 
 module Xlogin
   class FirmwareFactory
 
-    class << self
-      def [](name)
-        firmwares[name.to_s.downcase]
-      end
-
-      def register(name, firmware)
-        firmwares[name.to_s.downcase] = firmware
-      end
-
-      def register_file(file)
-        require file if file =~ /.rb$/
-      end
-
-      def register_dir(dir)
-        Dir.entries(dir).each do |file|
-          register_file(File.join(dir, file))
-        end
-      end
-
-      private
-      def firmwares
-        @firmwares ||= Hash.new
-      end
-    end
+    include Singleton
 
     def initialize
-      @database = Hash.new
+      @database  = Hash.new
+      @templates = Hash.new
+    end
 
-      SourceDir.compact.each do |dir|
-        source(File.join(dir, '.xloginrc'))
-        source(File.join(dir, '_xloginrc'))
-      end
+    def register_template_file(file)
+      require file if file =~ /.rb$/
+    end
+
+    def register_template(name, template)
+      @templates[name.to_s.downcase] = template
+    end
+
+    def template_for(name)
+      @templates[name.to_s.downcase]
     end
 
     def source(db_file)
@@ -51,7 +37,6 @@ module Xlogin
     end
 
     def set(**opts)
-      opts[:type] = opts[:type].to_s
       @database[opts[:name]] = opts
     end
 
@@ -61,14 +46,13 @@ module Xlogin
 
     def build(args)
       uri  = args.delete(:uri)
-      type = args.delete(:type).to_s
+      type = args.delete(:type)
       name = args.delete(:name)
       opts = args.reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
       raise Xlogin::GeneralError.new("Host not found: #{args}") unless uri && type
 
-      firmware = Xlogin::FirmwareFactory[type].dup
-      session  = firmware.run(uri, opts)
-      session.name = name
+      session = template_for(type).dup.run(uri, opts)
+      session.name = name if name
       session
     end
 
@@ -80,10 +64,9 @@ module Xlogin
     end
 
     def method_missing(name, *args, &block)
-      firmware = Xlogin::FirmwareFactory[name]
-      super unless firmware && args.size >= 2
+      super unless template_for(name) && args.size >= 2
 
-      type = name
+      type = name.to_s.downcase
       name = args.shift
       uri  = args.shift
       opts = args.shift || {}

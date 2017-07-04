@@ -8,8 +8,8 @@ module Xlogin
         uri = URI(uri.to_s)
 
         if hostname = opts.delete(:delegate)
-          target = FirmwareFactory.new.get(hostname)
-          target_os  = FirmwareFactory[target[:type]]
+          target = Xlogin.factory.get(hostname)
+          target_os  = Xlogin.factory.template_for(target[:type])
           target_uri = URI(target[:uri])
 
           login    = @methods.delete(:login)
