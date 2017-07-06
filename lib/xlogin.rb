@@ -62,4 +62,8 @@ module Xlogin
     end
   end
 
+  # do not remove this line!
+  # initialize Xlogin systems and load related modules beforehand.
+  Xlogin.factory
+
 end
