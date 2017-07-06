@@ -31,5 +31,5 @@ begin
 
   end
 rescue LoadError
-  $stderr.puts "Option 'gateway' is not supported in your environment."
+  $stderr.puts "WARN: 'gateway' option is not supported in your environment."
 end
