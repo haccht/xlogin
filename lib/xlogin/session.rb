@@ -8,15 +8,15 @@ module Xlogin
 
     def configure_session(**opts)
       @opts     = opts.dup
-      @host     = @name = @opts.delete(:host)
-      @port     = @opts.delete(:port)
-      @userinfo = @opts.delete(:userinfo).to_s.split(':')
+      @host     = @name = @opts[:host]
+      @port     = @opts[:port]
+      @userinfo = @opts[:userinfo].to_s.split(':')
       raise Xlogin::GeneralError.new('Argument error.') unless @host && @port
 
-      @prompts  = @opts.delete(:prompts) || [[/[$%#>] ?\z/n, nil]]
-      @timeout  = @opts.delete(:timeout) || 60
+      @prompts  = @opts[:prompts] || [[/[$%#>] ?\z/n, nil]]
+      @timeout  = @opts[:timeout] || 60
 
-      @loglist  = [@opts.delete(:log)].flatten.compact
+      @loglist  = [@opts[:log]].flatten.compact
       @logger   = update_logger
     end
 
