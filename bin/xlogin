@@ -12,7 +12,6 @@ module Xlogin
       opt = OptionParser.new
       opt.on('-e', '--enable', 'Try to gain enable priviledge.') { |v| options[:e] = v }
       opt.on('-l', '--log',    'Enable logging.')                { |v| options[:l] = v }
-      opt.on('-r FILE',        'Load extention library.')        { |v| options[:r] = v }
 
       opt.on(      '--list',   'List all devices.')              { |v| options[:list] = v }
 
@@ -34,9 +33,9 @@ module Xlogin
     def self.run(args = ARGV)
       options, args = getopts(args)
 
-      if options[:r]
-        options[:r].split(':').each { |file| require file }
-      end
+      source_dirs  = [ENV['HOME'], Dir.pwd]
+      source_files = source_dirs.flat_map { |dir| [File.join(dir, '_xloginrc'), File.join(dir, '.xloginrc')] }
+      Xlogin.factory.source(*source_files)
 
       if options[:list]
         puts Xlogin.factory.list.map { |e| "#{e[:name]}\t#{e[:type]}" }
@@ -52,8 +51,7 @@ module Xlogin
       puts "Trying #{target}..."
       puts "Escape character is '^]'."
 
-      session = Xlogin.get(target, log: loggers)
-      session.enable if options[:e] && session.respond_to?(:enable)
+      session = Xlogin.get(target, force_grant: options[:e], log: loggers)
       session.interact!
     rescue => e
       $stderr.puts("#{e}\n\n")

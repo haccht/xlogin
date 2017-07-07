@@ -24,5 +24,3 @@ Xlogin.configure :vyos do |os|
     end
   end
 end
-
-Xlogin.alias :edgeos, :vyos

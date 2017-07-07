@@ -1,3 +1,5 @@
+require 'thread'
+require 'timeout'
 require 'stringio'
 
 module Xlogin
@@ -18,6 +20,36 @@ module Xlogin
 
       @loglist  = [@opts[:log]].flatten.compact
       @logger   = update_logger
+
+      @mutex    = Mutex.new
+    end
+
+    def renew(opts = @opts)
+      self.class.new(opts).tap { |s| @sock = s.sock }
+    end
+
+    def lock(timeout: @timeout)
+      granted = false
+
+      begin
+        Timeout.timeout(timeout) { @mutex.lock }
+        granted = true
+        yield self
+      ensure
+        @mutex.unlock if @mutex.locked? && granted
+      end
+    end
+
+    def with_retry(max_retry: 1, renew: false)
+      retry_count = 0
+
+      begin
+        yield self
+      rescue => e
+        raise e if (retry_count += 1) > max_retry
+        self.renew if renew
+        retry
+      end
     end
 
     def enable_log(out = $stdout)

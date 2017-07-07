@@ -66,7 +66,7 @@ module Xlogin
         end
       end
 
-      klass.new(
+      session = klass.new(
         {
           host:     uri.host,
           port:     uri.port,
@@ -75,6 +75,9 @@ module Xlogin
           prompts:  @prompts,
         }.merge(opts)
       )
+
+      session.enable if session.respond_to?(:enable) && opts[:force_grant]
+      session
     end
 
   end
