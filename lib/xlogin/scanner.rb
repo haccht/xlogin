@@ -21,6 +21,13 @@ module Xlogin
       @scan_db.keys
     end
 
+    def sessions(&block)
+      hostnames = @queries.map { |_, hostname, _| hostname }.uniq
+      sessions  = hostnames.map { |hostname| session(hostname) }
+      sessions.each { |s| block.call(s) } if block
+      sessions
+    end
+
     def define(id, &block)
       type = ScanType.new
       type.instance_eval(&block)
@@ -57,7 +64,7 @@ module Xlogin
     end
 
     def close
-      @sessions.each { |_, s| s.close }
+      sessions { |s| s.close }
     end
 
     private
