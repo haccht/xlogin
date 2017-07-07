@@ -64,7 +64,7 @@ module Xlogin
     end
 
     def method_missing(name, *args, &block)
-      super unless template_for(name) && args.size >= 2
+      super unless caller_locations.first.label == "source"
 
       type = name.to_s.downcase
       name = args.shift
