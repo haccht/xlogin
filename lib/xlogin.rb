@@ -7,12 +7,12 @@ require 'xlogin/version'
 module Xlogin
 
   ## where firmware templates locate.
-  TemplateDir = File.join(File.dirname(__FILE__), 'xlogin', 'firmwares')
+  TemplateDir = File.join(File.dirname(__FILE__), 'xlogin', 'firmware_templates')
 
   ## where instance parameter definitions locate.
   SourceDirs  = [
-    File.join(File.dirname(__FILE__), 'xlogin'),
-    ENV['HOME'], ENV['XLOGIN_HOME'],
+    ENV['HOME'],
+    ENV['XLOGIN_HOME'],
     Dir.pwd
   ]
 
