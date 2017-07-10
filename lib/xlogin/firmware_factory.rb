@@ -13,16 +13,20 @@ module Xlogin
       @templates = Hash.new
     end
 
-    def register_template_file(file)
+    def load_template_file(file)
       require file if file =~ /.rb$/
     end
 
-    def register_template(name, template)
+    def get_template(name)
+      @templates[name.to_s.downcase]
+    end
+
+    def set_template(name, template)
       @templates[name.to_s.downcase] = template
     end
 
-    def template_for(name)
-      @templates[name.to_s.downcase]
+    def list_templates
+      @templates.keys
     end
 
     def source(db_file)
@@ -51,7 +55,7 @@ module Xlogin
       opts = args.reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
       raise Xlogin::GeneralError.new("Host not found: #{args}") unless uri && type
 
-      session = template_for(type).dup.run(uri, opts)
+      session = get_template(type).dup.run(uri, opts)
       session.name = name if name
       session
     end

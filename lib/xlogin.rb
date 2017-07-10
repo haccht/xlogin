@@ -24,7 +24,7 @@ module Xlogin
         @factory = Xlogin::FirmwareFactory.instance
 
         Dir.entries(TemplateDir).each do |file|
-          @factory.register_template_file(File.join(TemplateDir, file))
+          @factory.load_template_file(File.join(TemplateDir, file))
         end
 
         SourceDirs.compact.uniq.each do |dir|
@@ -37,17 +37,17 @@ module Xlogin
     end
 
     def configure(name)
-      template = factory.template_for(name) || Xlogin::Firmware.new
+      template = factory.get_template(name) || Xlogin::Firmware.new
       yield template if block_given?
 
-      factory.register_template(name, template)
+      factory.set_template(name, template)
     end
 
     def alias(new_name, original_name)
-      template = factory.template_for(original_name)
+      template = factory.get_template(original_name)
       raise Xlogin::GeneralError.new("'#{original_name}' not found") unless template
 
-      factory.register_template(new_name, template)
+      factory.set_template(new_name, template)
     end
 
     def get(hostname, args = {})
