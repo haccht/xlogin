@@ -7,10 +7,10 @@ require 'xlogin/version'
 module Xlogin
 
   ## where firmware templates locate.
-  TemplateDir = File.join(File.dirname(__FILE__), 'xlogin', 'firmware_templates')
+  template_dir = File.join(File.dirname(__FILE__), 'xlogin', 'firmware_templates')
 
   ## where instance parameter definitions locate.
-  SourceDirs  = [
+  source_dirs  = [
     ENV['HOME'],
     ENV['XLOGIN_HOME'],
     Dir.pwd
@@ -23,11 +23,11 @@ module Xlogin
       unless @factory
         @factory = Xlogin::FirmwareFactory.instance
 
-        Dir.entries(TemplateDir).each do |file|
+        Dir.entries(template_dir).each do |file|
           @factory.load_template_file(File.join(TemplateDir, file))
         end
 
-        SourceDirs.compact.uniq.each do |dir|
+        source_dirs.compact.uniq.each do |dir|
           @factory.source(File.join(dir, '.xloginrc'))
           @factory.source(File.join(dir, '_xloginrc'))
         end
