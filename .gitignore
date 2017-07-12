@@ -56,5 +56,9 @@ build-iPhoneSimulator/
 # End of https://www.gitignore.io/api/ruby
 /lib/xlogin/.xloginrc
 /lib/xlogin/_xloginrc
-/lib/xlogin/firmware_templates/*
-!/lib/xlogin/firmware_templates/vyos.rb
+/lib/xlogin/templates/*
+!/lib/xlogin/templates/vyos.rb
+!/lib/xlogin/templates/junos.rb
+!/lib/xlogin/templates/ios.rb
+!/lib/xlogin/templates/iosxr.rb
+!/lib/xlogin/templates/sros.rb

@@ -11,13 +11,17 @@ module Xlogin
     def initialize
       @database  = Hash.new
       @templates = Hash.new
+      @aliases   = Hash.new
     end
 
-    def load_template_file(file)
-      require file if file =~ /.rb$/
+    def load_template_file(*files)
+      files.each do |file|
+        require file if file =~ /.rb$/
+      end
     end
 
     def get_template(name)
+      name = @aliases[name] || name
       @templates[name.to_s.downcase]
     end
 
@@ -29,11 +33,15 @@ module Xlogin
       @templates.keys
     end
 
-    def source(db_file)
-      return unless File.exist?(db_file)
+    def alias_template(new_name, name)
+      @aliases[new_name.to_s.downcase] = name
+    end
 
-      content = IO.read(db_file)
-      instance_eval(content)
+    def source(*files)
+      files.compact.uniq.each do |file|
+        next unless File.exist?(file)
+        instance_eval(IO.read(file))
+      end
     end
 
     def get(name)
@@ -55,7 +63,10 @@ module Xlogin
       opts = args.reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
       raise Xlogin::GeneralError.new("Host not found: #{args}") unless uri && type
 
-      session = get_template(type).dup.run(uri, opts)
+      template = get_template(type)
+      raise Xlogin::GeneralError.new("Template not defined: #{type}") unless template
+
+      session = template.dup.run(uri, opts)
       session.name = name if name
       session
     end
@@ -68,7 +79,7 @@ module Xlogin
     end
 
     def method_missing(name, *args, &block)
-      super unless caller_locations.first.label == "source"
+      super unless caller_locations.first.label =~ /source/ and args.size >= 2
 
       type = name.to_s.downcase
       name = args.shift

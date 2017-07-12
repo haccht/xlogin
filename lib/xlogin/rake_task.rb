@@ -9,9 +9,18 @@ module Xlogin
     class << self
       include Rake::DSL
 
-      def bulk(names, **xlogin_opts, &block)
-        names = names.map(&:strip).grep(/^\s*[^#]/)
+      def mutex
+        @mutex ||= Mutex.new
+      end
 
+      def source(file, &block)
+        Xlogin.factory.source(file)
+        hostnames = Xlogin.factory.list.map { |e| e[:name] }
+        bulk(hostnames, &block)
+      end
+
+      def bulk(names, &block)
+        names = names.map(&:strip).grep(/^\s*[^#]/)
         namecount = names.uniq.inject({}) { |a, e| a.merge(e => names.count(e)) }
         duplicate = namecount.keys.select { |name| namecount[name] > 1 }
         raise Xlogin::GeneralError.new("Duplicate hosts found - #{duplicate.join(', ')}") unless duplicate.empty?
@@ -21,13 +30,9 @@ module Xlogin
 
           names.each do |name|
             desc "#{description} (#{name})"
-            RakeTask.new(name, **xlogin_opts, &block)
+            RakeTask.new(name, &block)
           end
         end
-      end
-
-      def mutex
-        @mutex ||= Mutex.new
       end
 
       def current_namespace
@@ -46,23 +51,24 @@ module Xlogin
 
 
     attr_reader   :name
+    attr_accessor :xlogin_opts
     attr_accessor :fail_on_error
     attr_accessor :silent
     attr_accessor :lockfile
     attr_accessor :logfile
     attr_accessor :uncomment
 
-    def initialize(name, **xlogin_opts)
+    def initialize(name)
       @name          = name
+      @xlogin_opts   = Xlogin.factory.get(name) || {}
+      @session       = nil
+      @taskrunner    = nil
+
       @fail_on_error = true
       @silent        = Rake.application.options.silent
       @lockfile      = nil
       @logfile       = nil
       @uncomment     = false
-      @xlogin_opts   = xlogin_opts
-
-      @session       = nil
-      @taskrunner    = nil
 
       yield(self) if block_given?
       define
@@ -86,9 +92,7 @@ module Xlogin
     private
     def define
       RakeTask.current_namespace do
-        description = Rake.application.last_description || "Run '#{RakeTask.current_namespace}'"
-
-        desc description
+        desc Rake.application.last_description || "Run '#{RakeTask.current_namespace}'"
         Rake.application.last_description = nil if uncomment
 
         if lockfile
@@ -108,24 +112,29 @@ module Xlogin
     end
 
     def run_task
-      loggers = []
+      raise Xlogin::GeneralError.new("missing xlogin_opts to connect to #{name}") unless @xlogin_opts[:type] && @xlogin_opts[:uri]
+
+      loggers = [@xlogin_opts[:log]].flatten.compact
       loggers << $stdout unless silent || Rake.application.options.always_multitask
 
       if logfile
         mkdir_p(File.dirname(logfile), verbose: Rake.application.options.trace)
-        loggers << logfile if logfile
+        loggers << logfile
       end
 
       @xlogin_opts[:log] = loggers unless loggers.empty?
 
       begin
-        @session = Xlogin.get(name, @xlogin_opts.dup)
-        @session.extend(SessionExt)
+        @session = Xlogin.factory.build(@xlogin_opts)
+        if @session && @taskrunner
+          @session.extend(SessionExt)
 
-        method_proc = method(:safe_puts)
-        @session.define_singleton_method(:safe_puts) { |*args| method_proc.call(*args) }
+          # pass RakeTask#safe_puts method to the session instance.
+          method_proc = method(:safe_puts)
+          @session.define_singleton_method(:safe_puts) { |*args| method_proc.call(*args) }
 
-        @taskrunner.call(@session) if @taskrunner && @session
+          @taskrunner.call(@session) if @taskrunner && @session
+        end
       rescue => e
         raise e if fail_on_error
         safe_puts(e, io: $stderr, force: true)
@@ -160,13 +169,8 @@ module Xlogin
           cmd(my_command)
         else
           cmd(my_command)
-          # retry thid command
           readline(command)
         end
-      end
-
-      def sync(&block)
-        RakeTask.mutex.synchronize(&block) if block
       end
     end
 

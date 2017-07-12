@@ -8,29 +8,24 @@ module Xlogin
 
   class GeneralError < StandardError; end
 
+  # default template directory
+  TEMPLATE_DIR = File.join(File.dirname(__FILE__), 'xlogin', 'templates')
+
   class << self
     def factory
+      @factory ||= configure_factory
+    end
+
+    def configure_factory(*template_dirs)
       unless @factory
         @factory = Xlogin::FirmwareFactory.instance
 
-        template_dir = File.join(File.dirname(__FILE__), 'xlogin', 'firmware_templates')
-
-        Dir.entries(template_dir).each do |file|
-          @factory.load_template_file(File.join(template_dir, file))
-        end
-
-        source_dirs  = [
-          ENV['HOME'],
-          ENV['XLOGIN_HOME'],
-          Dir.pwd
-        ]
-
-        source_dirs.compact.uniq.each do |dir|
-          @factory.source(File.join(dir, '.xloginrc'))
-          @factory.source(File.join(dir, '_xloginrc'))
+        template_dirs = [TEMPLATE_DIR, File.join(Dir.pwd, 'templates'), *template_dirs]
+        template_dirs.compact.uniq.each do |dir|
+          next unless FileTest.directory?(dir)
+          @factory.load_template_file(*Dir.glob(File.join(dir, '*.rb')))
         end
       end
-
       @factory
     end
 
@@ -41,11 +36,8 @@ module Xlogin
       factory.set_template(name, template)
     end
 
-    def alias(new_name, original_name)
-      template = factory.get_template(original_name)
-      raise Xlogin::GeneralError.new("'#{original_name}' not found") unless template
-
-      factory.set_template(new_name, template)
+    def alias(new_name, name)
+      factory.alias_template(new_name, name)
     end
 
     def get(hostname, args = {})
@@ -58,9 +50,5 @@ module Xlogin
       end
     end
   end
-
-  # do not remove this line!
-  # initialize Xlogin systems and load related modules beforehand.
-  Xlogin.factory
 
 end

@@ -46,7 +46,6 @@ module Xlogin
       opt.on('-H', 'Display hostnames for each response.')   { |v| options[:H] = v }
 
       opt.on('-f FILE',  'Read target hostnames from FILE.') { |v| options[:f] = v }
-      opt.on('-r FILE',  'Load extention library.')          { |v| options[:r] = v }
 
       opt.on('-x VALUE', 'Read commands from VALUE.')        { |v| options[:x] = v }
       opt.on('-c VALUE')                                     { |v| options[:c] = v }
@@ -74,9 +73,9 @@ module Xlogin
       usage if options[:x].nil? and options[:c].nil?
       usage if options[:f].nil? && args.empty?
 
-      if options[:r]
-        options[:r].split(':').each { |file| require file }
-      end
+      source_dirs  = [ENV['HOME'], Dir.pwd]
+      source_files = source_dirs.flat_map { |dir| [File.join(dir, '_xloginrc'), File.join(dir, '.xloginrc')] }
+      Xlogin.factory.source(*source_files)
 
       size     = (options[:p] || 1).to_i
       interval = (options[:i] || 0).to_i
