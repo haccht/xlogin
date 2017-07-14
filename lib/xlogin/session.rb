@@ -1,3 +1,5 @@
+require 'thread'
+require 'timeout'
 require 'stringio'
 
 module Xlogin
@@ -18,24 +20,29 @@ module Xlogin
 
       @loglist  = [@opts[:log]].flatten.compact
       @logger   = update_logger
+
+      @mutex    = Mutex.new
     end
 
-    def thread_safe(timeout: @timeout, maximum_retry: 1)
-      @safe_session = self
-      @safe_session_mutex ||= Mutex.new
+    def lock(timeout: @timeout, max_retry: 1)
+      session_granted = false
 
-      Timeout.timeout(timeout) do
-        @safe_session_mutex.synchronize do
-          retry_count = 0
-          begin
-            @safe_session ||= Xlogin.get(@host, @opts)
-            yield @safe_session
-          rescue Errno::ECONNRESET => e
-            raise e unless (retry_count += 1) < maximum_retry
-            @safe_session = nil
-            retry
-          end
+      begin
+        Timeout.timeout(timeout) { @mutex.lock }
+        retry_count     = 0
+        safe_session    = self
+        session_granted = true
+
+        begin
+          safe_session ||= Xlogin.get(@host, @opts)
+          yield safe_session
+        rescue Errno::ECONNRESET => e
+          raise e unless (retry_count += 1) < max_retry
+          safe_session = nil
+          retry
         end
+      ensure
+        @mutex.unlock if @mutex.locked? && session_granted
       end
     end
 
