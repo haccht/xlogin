@@ -24,6 +24,10 @@ module Xlogin
       @mutex    = Mutex.new
     end
 
+    def renew(opts = @opts)
+      self.class.new(opts)
+    end
+
     def lock(timeout: @timeout, max_retry: 1)
       session_granted = false
 
@@ -34,10 +38,10 @@ module Xlogin
         session_granted = true
 
         begin
-          safe_session ||= Xlogin.get(@host, @opts)
+          safe_session ||= self.renew
           yield safe_session
-        rescue Errno::ECONNRESET, Errno::EPIPE => e
-          raise e unless (retry_count += 1) < max_retry
+        rescue => e
+          raise e unless (retry_count += 1) > max_retry
           safe_session = nil
           retry
         end
