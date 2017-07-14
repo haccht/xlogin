@@ -36,7 +36,7 @@ module Xlogin
         begin
           safe_session ||= Xlogin.get(@host, @opts)
           yield safe_session
-        rescue Errno::ECONNRESET => e
+        rescue Errno::ECONNRESET, Errorno::EPIPE => e
           raise e unless (retry_count += 1) < max_retry
           safe_session = nil
           retry
