@@ -32,7 +32,7 @@ module Xlogin
       session_granted = false
 
       begin
-        Timeout.timeout(timeout) { @mutex.lock }
+        Timeout.timeout(timeout, Timeout::Error, 'connection timeout expired') { @mutex.lock }
         retry_count     = 0
         safe_session    = self
         session_granted = true
@@ -41,8 +41,8 @@ module Xlogin
           safe_session ||= self.renew
           yield safe_session
         rescue => e
-          raise e unless (retry_count += 1) > max_retry
           safe_session = nil
+          raise e if max_retry < (retry_count += 1)
           retry
         end
       ensure

@@ -51,8 +51,7 @@ module Xlogin
       puts "Trying #{target}..."
       puts "Escape character is '^]'."
 
-      session = Xlogin.get(target, log: loggers)
-      session.enable if options[:e] && session.respond_to?(:enable)
+      session = Xlogin.get(target, force_grant: options[:e], log: loggers)
       session.interact!
     rescue => e
       $stderr.puts("#{e}\n\n")

@@ -2,7 +2,7 @@ Xlogin.configure :ios do |os|
   os.timeout(300)
   os.prompt(/[>$#]/)
   os.prompt(/yes \/ no: /) do
-    puts opts[:force] ? 'y' : 'n'
+    puts opts[:assume_yes] ? 'y' : 'n'
   end
 
   os.bind(:login) do |password|

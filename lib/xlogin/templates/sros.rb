@@ -2,7 +2,7 @@ Xlogin.configure :sros do |os|
   os.timeout(300)
   os.prompt(/[>$#] /)
   os.prompt(/y\/n:/) do
-    puts opts[:force] ? 'y' : 'n'
+    puts opts[:assume_yes] ? 'y' : 'n'
   end
 
   os.bind(:login) do |*args|
