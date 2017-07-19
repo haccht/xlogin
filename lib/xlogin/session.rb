@@ -25,28 +25,30 @@ module Xlogin
     end
 
     def renew(opts = @opts)
-      self.class.new(opts)
+      self.class.new(opts).tap { |s| @sock = s.sock }
     end
 
-    def lock(timeout: @timeout, max_retry: 1)
-      session_granted = false
+    def lock(timeout: @timeout)
+      granted = false
 
       begin
-        Timeout.timeout(timeout, Timeout::Error, 'connection timeout expired') { @mutex.lock }
-        retry_count     = 0
-        safe_session    = self
-        session_granted = true
-
-        begin
-          safe_session ||= self.renew
-          yield safe_session
-        rescue => e
-          safe_session = nil
-          raise e if max_retry < (retry_count += 1)
-          retry
-        end
+        Timeout.timeout(timeout) { @mutex.lock }
+        granted = true
+        yield self
       ensure
-        @mutex.unlock if @mutex.locked? && session_granted
+        @mutex.unlock if @mutex.locked? && granted
+      end
+    end
+
+    def with_retry(max_retry: 1, renew: false)
+      retry_count = 0
+
+      begin
+        yield self
+      rescue => e
+        raise e if (retry_count += 1) > max_retry
+        self.renew if renew
+        retry
       end
     end
 
