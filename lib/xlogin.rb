@@ -8,25 +8,20 @@ module Xlogin
 
   class GeneralError < StandardError; end
 
-  # default template directory
-  TEMPLATE_DIR = File.join(File.dirname(__FILE__), 'xlogin', 'templates')
+  BUILDIN_TEMPLATES = Dir.glob(File.join(File.dirname(__FILE__), 'xlogin', 'templates', '*.rb'))
 
   class << self
     def factory
-      @factory ||= configure_factory
+      @factory ||= load_templates(*BUILDIN_TEMPLATES)
     end
 
-    def configure_factory(*template_dirs)
-      unless @factory
-        @factory = Xlogin::FirmwareFactory.instance
-
-        template_dirs = [TEMPLATE_DIR, File.join(Dir.pwd, 'templates'), *template_dirs]
-        template_dirs.compact.uniq.each do |dir|
-          next unless FileTest.directory?(dir)
-          @factory.load_template_file(*Dir.glob(File.join(dir, '*.rb')))
-        end
+    def load_templates(*template_files)
+      @loaded_template_files ||= []
+      Xlogin::FirmwareFactory.instance.tap do |factory|
+        files = template_files - @loaded_template_files
+        factory.load_template_file(*files)
+        @loaded_template_files += files
       end
-      @factory
     end
 
     def configure(name)
