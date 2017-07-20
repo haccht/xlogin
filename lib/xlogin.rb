@@ -25,18 +25,20 @@ module Xlogin
     end
 
     def configure(name)
-      template = factory.get_template(name) || Xlogin::Firmware.new
+      _factory = Xlogin::FirmwareFactory.instance
+      template = _factory.get_template(name) || Xlogin::Firmware.new
       yield template if block_given?
-
-      factory.set_template(name, template)
+      _factory.set_template(name, template)
     end
 
     def alias(new_name, name)
-      factory.alias_template(new_name, name)
+      _factory = Xlogin::FirmwareFactory.instance
+      _factory.alias_template(new_name, name)
     end
 
     def get(hostname, args = {})
-      session = factory.build_from_hostname(hostname, args)
+      _factory = Xlogin::FirmwareFactory.instance
+      session = _factory.build_from_hostname(hostname, args)
 
       if block_given?
         begin yield session ensure session.close end

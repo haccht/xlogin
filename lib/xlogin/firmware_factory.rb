@@ -16,17 +16,18 @@ module Xlogin
 
     def load_template_file(*files)
       files.each do |file|
-        require file if file =~ /.rb$/
+        require file if File.exist?(file) && file =~ /.rb$/
       end
     end
 
     def get_template(name)
-      name = @aliases[name] || name
-      @templates[name.to_s.downcase]
+      name = @aliases[name.to_s.downcase] || name.to_s.downcase
+      @templates[name]
     end
 
     def set_template(name, template)
-      @templates[name.to_s.downcase] = template
+      name = @aliases[name.to_s.downcase] || name.to_s.downcase
+      @templates[name] = template
     end
 
     def list_templates
@@ -34,7 +35,7 @@ module Xlogin
     end
 
     def alias_template(new_name, name)
-      @aliases[new_name.to_s.downcase] = name
+      @aliases[new_name.to_s.downcase] = name.to_s.downcase
     end
 
     def source(*files)
