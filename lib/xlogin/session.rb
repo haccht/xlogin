@@ -10,7 +10,8 @@ module Xlogin
 
     def configure_session(**opts)
       @opts     = opts.dup
-      @host     = @name = @opts[:host]
+      @host     = @opts[:host]
+      @name     = @opts[:name] || @host
       @port     = @opts[:port]
       @userinfo = @opts[:userinfo].to_s.split(':')
       raise Xlogin::GeneralError.new('Argument error.') unless @host && @port
