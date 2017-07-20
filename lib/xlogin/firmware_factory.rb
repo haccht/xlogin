@@ -16,17 +16,18 @@ module Xlogin
 
     def load_template_file(*files)
       files.each do |file|
-        require file if file =~ /.rb$/
+        require file if File.exist?(file) && file =~ /.rb$/
       end
     end
 
     def get_template(name)
-      name = @aliases[name] || name
-      @templates[name.to_s.downcase]
+      name = @aliases[name.to_s.downcase] || name.to_s.downcase
+      @templates[name]
     end
 
     def set_template(name, template)
-      @templates[name.to_s.downcase] = template
+      name = @aliases[name.to_s.downcase] || name.to_s.downcase
+      @templates[name] = template
     end
 
     def list_templates
@@ -34,7 +35,7 @@ module Xlogin
     end
 
     def alias_template(new_name, name)
-      @aliases[new_name.to_s.downcase] = name
+      @aliases[new_name.to_s.downcase] = name.to_s.downcase
     end
 
     def source(*files)
@@ -63,25 +64,23 @@ module Xlogin
     end
 
     def build(args)
-      uri  = args.delete(:uri)
-      type = args.delete(:type)
-      name = args.delete(:name)
-      opts = args.reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
-      raise Xlogin::GeneralError.new("Host not found: #{args}") unless uri && type
-
+      type     = args.delete(:type)
       template = get_template(type)
       raise Xlogin::GeneralError.new("Template not defined: #{type}") unless template
 
+      uri  = args.delete(:uri)
+      opts = args.reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
+      raise Xlogin::GeneralError.new("Host not found: #{args}") unless uri
+
       session = template.dup.run(uri, opts)
-      session.name = name if name
       session
     end
 
     def build_from_hostname(hostname, **args)
-      host = get(hostname)
-      raise Xlogin::GeneralError.new("Host not found: #{hostname}") unless host
+      hostinfo = get(hostname)
+      raise Xlogin::GeneralError.new("Host not found: #{hostname}") unless hostinfo
 
-      build(get(hostname).merge(args))
+      build(hostinfo.merge(args))
     end
 
     def method_missing(name, *args, &block)
