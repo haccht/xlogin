@@ -42,8 +42,7 @@ module Xlogin
     end
 
     def get(hostname, args = {})
-      _factory = Xlogin::FirmwareFactory.instance
-      session = _factory.build_from_hostname(hostname, args)
+      session = factory.build_from_hostname(hostname, args)
 
       if block_given?
         begin yield session ensure session.close end
