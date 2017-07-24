@@ -24,6 +24,11 @@ module Xlogin
       end
     end
 
+    def source(*source_files)
+      _factory = Xlogin::FirmwareFactory.instance
+      _factory.source(*source_files)
+    end
+
     def configure(name)
       _factory = Xlogin::FirmwareFactory.instance
       template = _factory.get_template(name) || Xlogin::Firmware.new
