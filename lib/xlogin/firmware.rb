@@ -1,4 +1,5 @@
 require 'uri'
+require 'xlogin/ssh'
 require 'xlogin/telnet'
 
 module Xlogin
