@@ -17,25 +17,7 @@ module Xlogin
         'Prompt'  => Regexp.union(*@prompts.map(&:first))
       )
 
-      login(*@userinfo) if respond_to?(:login) && !@userinfo.empty?
-    end
-
-    def waitfor(*expect)
-      if expect.compact.empty?
-        super(Regexp.union(*@prompts.map(&:first)), &@logger)
-      else
-        line = super(*expect, &@logger)
-        _, process = @prompts.find { |r, p| r =~ line && p }
-        if process
-          instance_eval(&process)
-          line += waitfor(*expect)
-        end
-        line
-      end
-    end
-
-    def renew(opts = @opts)
-      self.class.new(opts).tap { |s| @sock = s.sock }
+      login(*@userinfo.split(':')) if respond_to?(:login) && !@userinfo.empty?
     end
 
     def interact!

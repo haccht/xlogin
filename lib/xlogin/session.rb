@@ -13,7 +13,7 @@ module Xlogin
       @host     = @opts[:host]
       @name     = @opts[:name] || @host
       @port     = @opts[:port]
-      @userinfo = @opts[:userinfo].to_s.split(':')
+      @userinfo = @opts[:userinfo].to_s
       raise Xlogin::GeneralError.new('Argument error.') unless @host && @port
 
       @prompts  = @opts[:prompts] || [[/[$%#>] ?\z/n, nil]]
@@ -21,30 +21,43 @@ module Xlogin
 
       @loglist  = [@opts[:log]].flatten.compact
       @logger   = update_logger
+    end
 
-      @mutex    = Mutex.new
+    def waitfor(*expect)
+      if expect.compact.empty?
+        super(Regexp.union(*@prompts.map(&:first)), &@logger)
+      else
+        line = super(*expect, &@logger)
+        _, process = @prompts.find { |r, p| r =~ line && p }
+        if process
+          instance_eval(&process)
+          line += waitfor(*expect)
+        end
+        line
+      end
+    end
+
+    def dup(opts = @opts)
+      self.class.new(opts)
     end
 
     def lock(timeout: @timeout)
-      granted = false
+      @mutex ||= Mutex.new
 
       begin
         Timeout.timeout(timeout) { @mutex.lock }
-        granted = true
         yield self
       ensure
-        @mutex.unlock if @mutex.locked? && granted
+        @mutex.unlock if @mutex.locked?
       end
     end
 
     def with_retry(max_retry: 1)
-      retry_count = 0
-
       begin
         yield self
       rescue => e
         renew if respond_to?(:renew)
-        raise e if (retry_count += 1) > max_retry
+        raise e if (max_retry -= 1) < 0
         retry
       end
     end

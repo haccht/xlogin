@@ -8,11 +8,11 @@ module Xlogin
 
   class GeneralError < StandardError; end
 
-  BUILDIN_TEMPLATES = Dir.glob(File.join(File.dirname(__FILE__), 'xlogin', 'templates', '*.rb'))
+  BUILTIN_TEMPLATES = Dir.glob(File.join(File.dirname(__FILE__), 'xlogin', 'templates', '*.rb'))
 
   class << self
     def factory
-      @factory ||= load_templates(*BUILDIN_TEMPLATES)
+      @factory ||= load_templates(*BUILTIN_TEMPLATES)
     end
 
     def load_templates(*template_files)
@@ -42,8 +42,8 @@ module Xlogin
     end
 
     def get(hostname, args = {})
-      _factory = Xlogin::FirmwareFactory.instance
-      session = _factory.build_from_hostname(hostname, args)
+      source if factory.list.empty?
+      session = factory.build_from_hostname(hostname, args)
 
       if block_given?
         begin yield session ensure session.close end
