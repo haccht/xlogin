@@ -34,6 +34,10 @@ module Xlogin
       end
     end
 
+    def renew(opts = @opts)
+      self.class.new(opts).tap { |s| @sock = s.sock }
+    end
+
     def interact!
       $stdin.raw!
       disable_log($stdout)
