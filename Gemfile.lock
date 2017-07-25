@@ -2,6 +2,10 @@ PATH
   remote: .
   specs:
     xlogin (0.4.12)
+      net-ssh
+      net-ssh-gateway
+      net-ssh-telnet
+      net-telnet
 
 GEM
   remote: https://rubygems.org/
@@ -19,9 +23,6 @@ PLATFORMS
 
 DEPENDENCIES
   bundler (~> 1.13)
-  net-ssh-gateway
-  net-ssh-telnet
-  net-telnet
   rake (~> 10.0)
   xlogin!
 
