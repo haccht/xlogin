@@ -21,8 +21,6 @@ module Xlogin
 
       @loglist  = [@opts[:log]].flatten.compact
       @logger   = update_logger
-
-      @mutex    = Mutex.new
     end
 
     def waitfor(*expect)
@@ -40,14 +38,13 @@ module Xlogin
     end
 
     def lock(timeout: @timeout)
-      granted = false
+      @mutex ||= Mutex.new
 
       begin
         Timeout.timeout(timeout) { @mutex.lock }
-        granted = true
         yield self
       ensure
-        @mutex.unlock if @mutex.locked? && granted
+        @mutex.unlock if @mutex.locked?
       end
     end
 

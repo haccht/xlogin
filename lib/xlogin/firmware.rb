@@ -53,17 +53,18 @@ module Xlogin
       end
 
       if grant = opts.delete(:grant)
-        open, password, close = grant.split(':')
-        klass.class_exec(open, password, close) do |open, password, close|
-          alias_method "original_#{open}".to_sym, open.to_sym
-          define_method(open) do |arg = password, &block|
-            send("original_#{open}", arg)
+        mod_open, password, mod_close= grant.split(':')
+        klass.class_exec(mod_open, password, mod_close) do |mod_open, password, mod_close|
+          alias_method "__#{mod_open}".to_sym, mod_open.to_sym
+          define_method(mod_open) do |*args, &block|
+            args = [*args, password] unless password.empty?
+            send("__#{mod_open}", *args)
             if block
               block.call
-              cmd(close)
+              cmd(mod_close)
             end
           end
-          alias_method :enable, open
+          alias_method :enable, mod_open unless mod_open.to_sym == :enable
         end
       end
 
