@@ -42,6 +42,7 @@ module Xlogin
     end
 
     def get(hostname, args = {})
+      source if factory.list.empty?
       session = factory.build_from_hostname(hostname, args)
 
       if block_given?

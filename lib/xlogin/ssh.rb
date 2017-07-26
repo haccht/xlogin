@@ -8,7 +8,7 @@ module Xlogin
 
     def initialize(**opts)
       configure_session(opts.merge(port: opts[:port] || 22))
-      username, password = @userinfo
+      username, password = @userinfo.split(':')
 
       super(
         'Host'     => @host,

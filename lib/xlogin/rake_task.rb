@@ -13,7 +13,7 @@ module Xlogin
         @mutex ||= Mutex.new
       end
 
-      def source(file, &block)
+      def load(file, &block)
         Xlogin.factory.source(file)
         hostnames = Xlogin.factory.list.map { |e| e[:name] }
         bulk(hostnames, &block)

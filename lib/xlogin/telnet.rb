@@ -17,7 +17,7 @@ module Xlogin
         'Prompt'  => Regexp.union(*@prompts.map(&:first))
       )
 
-      login(*@userinfo) if respond_to?(:login) && !@userinfo.empty?
+      login(*@userinfo.split(':')) if respond_to?(:login) && !@userinfo.empty?
     end
 
     def renew(opts = @opts)
