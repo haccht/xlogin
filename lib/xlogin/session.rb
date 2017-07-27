@@ -37,6 +37,10 @@ module Xlogin
       end
     end
 
+    def dup(opts = @opts)
+      self.class.new(opts)
+    end
+
     def lock(timeout: @timeout)
       @mutex ||= Mutex.new
 

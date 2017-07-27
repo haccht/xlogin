@@ -20,10 +20,6 @@ module Xlogin
       login(*@userinfo.split(':')) if respond_to?(:login) && !@userinfo.empty?
     end
 
-    def renew(opts = @opts)
-      self.class.new(opts).tap { |s| @sock = s.sock }
-    end
-
     def interact!
       $stdin.raw!
       disable_log($stdout)
