@@ -39,12 +39,6 @@ module Xlogin
     end
 
     def source(*files)
-      if files.empty?
-        files += [ENV['HOME'], Dir.pwd].flat_map do |dir|
-          [File.join(dir, '_xloginrc'), File.join(dir, '.xloginrc')]
-        end
-      end
-
       files.compact.uniq.each do |file|
         next unless File.exist?(file)
         instance_eval(IO.read(file))
