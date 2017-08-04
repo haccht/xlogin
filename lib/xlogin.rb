@@ -12,10 +12,12 @@ module Xlogin
 
   class << self
     def factory
-      @factory ||= load_templates(*BUILTIN_TEMPLATES)
+      @factory ||= load_templates
     end
 
     def load_templates(*template_files)
+      template_files += BUILTIN_TEMPLATES if template_files.empty?
+
       @loaded_template_files ||= []
       Xlogin::FirmwareFactory.instance.tap do |factory|
         files = template_files - @loaded_template_files
@@ -25,6 +27,12 @@ module Xlogin
     end
 
     def source(*source_files)
+      if source_files.empty?
+        source_dirs   = [ENV['HOME'], Dir.pwd]
+        source_names  = ['_xloginrc', '.xloginrc']
+        source_files += source_dirs.product(source_names).map { |d, n| File.join(d, n) }
+      end
+
       _factory = Xlogin::FirmwareFactory.instance
       _factory.source(*source_files)
     end
