@@ -8,12 +8,4 @@ Xlogin.configure :junos do |os|
     waitfor(/Password:/) && puts(password)
     waitfor
   end
-
-  os.bind(:config) do
-    begin
-      cmd('show configuration | no-more')
-    ensure
-      cmd('exit')
-    end
-  end
 end

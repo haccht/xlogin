@@ -8,49 +8,34 @@ module Xlogin
 
   class GeneralError < StandardError; end
 
-  BUILTIN_TEMPLATES = Dir.glob(File.join(File.dirname(__FILE__), 'xlogin', 'templates', '*.rb'))
+  BUILTIN_TEMPLATE_FILES = Dir.glob(File.join(File.dirname(__FILE__), 'xlogin', 'templates', '*.rb'))
 
   class << self
     def factory
-      @factory ||= load_templates
+      @factory ||= Xlogin::FirmwareFactory.instance
+    end
+
+    def source(source_file)
+      factory.source(source_file)
     end
 
     def load_templates(*template_files)
-      template_files += BUILTIN_TEMPLATES if template_files.empty?
-
-      @loaded_template_files ||= []
-      Xlogin::FirmwareFactory.instance.tap do |factory|
-        files = template_files - @loaded_template_files
-        factory.load_template_file(*files)
-        @loaded_template_files += files
-      end
-    end
-
-    def source(*source_files)
-      if source_files.empty?
-        source_dirs   = [ENV['HOME'], Dir.pwd]
-        source_names  = ['_xloginrc', '.xloginrc']
-        source_files += source_dirs.product(source_names).map { |d, n| File.join(d, n) }
-      end
-
-      _factory = Xlogin::FirmwareFactory.instance
-      _factory.source(*source_files)
+      factory.load_template_files(*template_files)
     end
 
     def configure(name)
-      _factory = Xlogin::FirmwareFactory.instance
-      template = _factory.get_template(name) || Xlogin::Firmware.new
+      factory  = Xlogin::FirmwareFactory.instance
+      template = factory.get_template(name) || Xlogin::Firmware.new
       yield template if block_given?
-      _factory.set_template(name, template)
+      factory.set_template(name, template)
     end
 
     def alias(new_name, name)
-      _factory = Xlogin::FirmwareFactory.instance
-      _factory.alias_template(new_name, name)
+      factory = Xlogin::FirmwareFactory.instance
+      factory.alias_template(new_name, name)
     end
 
     def get(hostname, args = {})
-      source if factory.list.empty?
       session = factory.build_from_hostname(hostname, args)
 
       if block_given?

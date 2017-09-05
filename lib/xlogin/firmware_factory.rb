@@ -14,9 +14,10 @@ module Xlogin
       @aliases   = Hash.new
     end
 
-    def load_template_file(*files)
+    def load_template_files(*files)
       files.each do |file|
-        require file if File.exist?(file) && file =~ /.rb$/
+        next unless File.exist?(file) && file =~ /.rb$/
+        require file
       end
     end
 
@@ -38,11 +39,9 @@ module Xlogin
       @aliases[new_name.to_s.downcase] = name.to_s.downcase
     end
 
-    def source(*files)
-      files.compact.uniq.each do |file|
-        next unless File.exist?(file)
-        instance_eval(IO.read(file))
-      end
+    def source(file)
+      return unless File.exist?(file)
+      instance_eval(IO.read(file))
     end
 
     def get(name)

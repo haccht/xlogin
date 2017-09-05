@@ -78,7 +78,7 @@ module Xlogin
         }.merge(opts)
       )
 
-      session.enable if session.respond_to?(:enable) && opts[:force_grant]
+      session.enable if session.respond_to?(:enable) && opts[:enable]
       session
     end
 

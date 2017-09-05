@@ -1,168 +1,144 @@
 #! /usr/bin/env ruby
 
+require 'fileutils'
 require 'optparse'
+require 'ostruct'
+require 'parallel'
 require 'readline'
 require 'stringio'
 require 'thread'
 
 module Xlogin
-
-  class ThreadPool
-
-    def initialize(size)
-      @jobs = Array.new
-      @lock = Queue.new
-
-      @size = size
-      @size.times { @lock.push :token }
-
-      begin yield(self) ensure join end if block_given?
-    end
-
-    def run
-      @jobs << Thread.new do
-        token = @lock.pop
-        yield
-        @lock.push token
-      end
-    end
-
-    def join
-      @jobs.each { |job| job.join }
-    end
-
-  end
-
   class CLI
 
+    DEFAULT_INVENTORY_PATH = File.join(ENV['HOME'], '.xloginrc')
+    DEFAULT_TEMPLATE_DIR   = File.join(ENV['HOME'], '.xlogin.d')
+
     def self.getopts(args)
-      options = Hash.new
+      config = OpenStruct.new(
+        module: 'tty',
+        inventory: DEFAULT_INVENTORY_PATH,
+        templates: Dir.glob(File.join(DEFAULT_TEMPLATE_DIR, '*.rb')),
+        forks: 5,
+      )
 
-      opt = OptionParser.new
-      opt.on('-e', '--enable', 'Try to gain enable priviledge.') { |v| options[:e] = v }
-      opt.on('-l', '--log',    'Enable logging.')                { |v| options[:l] = v }
+      parser = OptionParser.new
+      parser.banner += ' HOST-PATTERN'
 
-      opt.on(      '--list',   'List all devices.')              { |v| options[:list] = v }
+      parser.on('-m MODULE',    '--module', String, 'Execute the module called NAME (default: tty).') { |v| config.module = v }
+      parser.on('-a ARGUMENTS', '--args',   String, 'The ARGUMENTS to pass to the module.')           { |v| config.args= v }
 
-      opt.banner += ' HOST'
-      opt.summary_width = 16
+      parser.on('-i PATH',      '--inventory',    String, 'The PATH to the inventory file (default: $HOME/.xloginrc).') { |v| config.inventory = v }
+      parser.on('-t PATH',      '--template',     String, 'The PATH to the template file.')       { |v| config.templates << v }
+      parser.on('-T DIRECTORY', '--template-dir', String, 'The DIRECTORY to the template files.') { |v| config.templates += Dir.glob(File.join(v, '*.rb')) }
+      parser.on('-l [DIRECTORY]', '--log',        String, 'The DIRECTORY to the output log file (default: $PWD/log).') { |v| config.logdir = v || Dir.pwd }
+
+      parser.on('-f NUM', '--forks',     Integer,   'Level of parallelism. (default: 1).') { |v| config.forks     = v }
+      parser.on('-e',     '--enable',    TrueClass, 'Try to gain enable priviledge.')      { |v| config.enable    = v }
+      parser.on('-y',     '--assumeyes', TrueClass, 'Answer "yes" for all confirmations.') { |v| config.assumeyes = v }
+      parser.on('-h',     '--help', 'Show this message.') { Xlogin::CLI.usage }
+
+      if config.templates.empty?
+        FileUtils.mkdir_p(DEFAULT_TEMPLATE_DIR)
+        Xlogin::BUILTIN_TEMPLATE_FILES.each { |file| FileUtils.cp(file, DEFAULT_TEMPLATE_DIR) }
+        config.templates = Dir.glob(File.join(DEFAULT_TEMPLATE_DIR, '*.rb'))
+      end
 
       self.class.module_eval do
-        define_method(:usage) do |msg = nil|
-          puts opt.to_s
-          puts "error: #{msg}" if msg
+        define_method(:usage) do |message = nil|
+          puts message, '' if message
+          puts parser.to_s
           exit 1
         end
       end
 
-      opt.parse!(args)
-      return options, args
+      config.hostnames = parser.parse(args)
+      config
     end
 
     def self.run(args = ARGV)
-      options, args = getopts(args)
+      config = getopts(args)
+      client = Xlogin::CLI.new(config)
 
-      if options[:list]
-        puts Xlogin.factory.list.map { |e| "#{e[:name]}\t#{e[:type]}" }
-        exit 0
-      end
+      Xlogin::CLI.usage("Module not found - #{config.module}") unless client.respond_to?(config.module)
+      client.method(config.module).call
+    end
 
-      target = args.shift
-      usage unless target
 
-      loggers = [$stdout]
-      loggers.push("#{target}.log") if options[:l]
+    def initialize(config)
+      Xlogin.source(config.inventory)
+      Xlogin.load_templates(*config.templates)
 
-      puts "Trying #{target}..."
+      @config = config
+    end
+
+    def list
+      puts Xlogin.factory.list.map { |e| "#{e[:name]}\t#{e[:type]}" }
+    end
+
+    def tty
+      @config.hostnames = [@config.hostnames.shift]
+      Xlogin::CLI.usage('Invalid HOST-PATTERN') if @config.hostnames.empty?
+
+      puts "Trying #{@config.hostnames.first}..."
       puts "Escape character is '^]'."
 
-      session = Xlogin.get(target, force_grant: options[:e], log: loggers)
-      session.interact!
-    rescue => e
-      $stderr.puts("#{e}\n\n")
-      raise
-    end
-
-  end
-
-  class ExecCLI
-
-    def self.getopts(args)
-      options = Hash.new
-
-      opt = OptionParser.new
-      opt.on('-F', '--force',  'Automatically reply "yes" if confirmed.') { |v| options[:F] = v }
-      opt.on('-e', '--enable', 'Try to gain enable priviledge.')          { |v| options[:e] = v }
-      opt.on('-l', '--log',    'Enable logging.')                         { |v| options[:l] = v }
-      opt.on('-H', 'Display hostnames for each response.')   { |v| options[:H] = v }
-
-      opt.on('-f FILE',  'Read target hostnames from FILE.') { |v| options[:f] = v }
-
-      opt.on('-x VALUE', 'Read commands from VALUE.')        { |v| options[:x] = v }
-      opt.on('-c VALUE')                                     { |v| options[:c] = v }
-
-      opt.on('-p VALUE', 'Specify concurrency pool size.')   { |v| options[:p] = v }
-      opt.on('-i VALUE', 'Specify interval time [sec].')     { |v| options[:i] = v }
-
-      opt.banner += ' HOST...'
-      opt.summary_width = 16
-
-      self.class.module_eval do
-        define_method(:usage) do |msg = nil|
-          puts opt.to_s
-          puts "error: #{msg}" if msg
-          exit 1
-        end
+      login do |session|
+        session.interact!
       end
-
-      opt.parse!(args)
-      return options, args
     end
 
-    def self.run(args = ARGV)
-      options, args = getopts(args)
-      usage if options[:x].nil? and options[:c].nil?
-      usage if options[:f].nil? && args.empty?
+    def command
+      Xlogin::CLI.usage('Missing argument') unless @config.args
 
-      size     = (options[:p] || 1).to_i
-      interval = (options[:i] || 0).to_i
-      commands = ((options[:x] == '-') ? $stdin.read : options[:x]).split(/[;\n]/) if options[:x]
+      login do |session|
+        command_lines = ['', *@config.args.split(';')]
+        command_lines.each { |command| session.cmd(command) }
+      end
+    end
 
-      nodes  = args.dup
-      nodes += IO.readlines(options[:f]).map(&:chomp) if options[:f]
+    def load
+      Xlogin::CLI.usage('Missing argument') unless @config.args
 
-      ThreadPool.new(size) do |pool|
-        nodes.each do |node|
-          next if node =~ /^\s*#/
+      login do |session|
+        command_lines = ['', *IO.readlines(@config.args.to_s)]
+        command_lines.each { |command| session.cmd(command) }
+      end
+    end
 
-          pool.run do
-            begin
-              resp    = StringIO.new
-              force   = options[:F] || false
-              loggers = []
-              loggers << $stdout unless size > 1
-              loggers << (URI.regexp =~ node ? URI(node).host : node) + ".log" if options[:l]
+    private
+    def login
+      display = Mutex.new
+      @config.forks = [@config.forks, @config.hostnames.size].min
+      FileUtils.mkdir_p(@config.logdir) if @config.logdir
 
+      Parallel.each(@config.hostnames, in_thread: @config.forks) do |hostname|
+        begin
+          buffer  = StringIO.new
 
-              session = Xlogin.get(node, force: force, log: loggers)
-              session.enable if options[:e] && session.respond_to?(:enable)
+          loggers = []
+          loggers << buffer  if @config.forks != 1
+          loggers << $stdout if @config.forks == 1
+          loggers << File.join(@config.logdir, "#{hostname}.log") if @config.logdir
 
-              if options[:x]
-                ['', *commands].map { |command| resp.print session.cmd(command) }
-              elsif options[:c]
-                resp.puts session.send(options[:c].to_sym)
-              end
+          session = Xlogin.get(hostname, assumeyes: @config.assumeyes, enable: @config.enable, log: loggers)
+          yield session
 
-              content = resp.string
-              content = content.lines.map { |line| "#{node}: #{line}" }.join if options[:H]
-
-              $stdout.puts content if size > 1
-            rescue => e
-              $stderr.puts "Something goes wrong with '#{node}' - #{e}"
-            end
+          if @config.forks > 1
+            output = buffer.string.lines.map { |line| "#{hostname}: #{line}" }.join
+            display.synchronize { $stdout.puts output }
+          end
+        rescue => e
+          if @config.forks > 1
+            output = "\n#{hostname}: [Error] #{e}"
+            display.synchronize { $stderr.puts output }
+          else
+            output = "\n[Error] #{e}"
+            display.synchronize { $stderr.puts output }
           end
         end
       end
     end
+
   end
 end
