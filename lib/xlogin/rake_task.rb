@@ -56,7 +56,7 @@ module Xlogin
     attr_accessor :silent
     attr_accessor :lockfile
     attr_accessor :logfile
-    attr_accessor :assume_yes
+    attr_accessor :assumeyes
     attr_accessor :uncomment
 
     def initialize(name)
@@ -69,7 +69,7 @@ module Xlogin
       @silent        = Rake.application.options.silent
       @lockfile      = nil
       @logfile       = nil
-      @assume_yes    = false
+      @assumeyes     = false
       @uncomment     = false
 
       yield(self) if block_given?
@@ -125,7 +125,7 @@ module Xlogin
       end
 
       @xlogin_opts[:log] = loggers unless loggers.empty?
-      @xlogin_opts[:assume_yes] ||= assume_yes
+      @xlogin_opts[:assumeyes] ||= assumeyes
 
       begin
         @session = Xlogin.factory.build(@xlogin_opts)

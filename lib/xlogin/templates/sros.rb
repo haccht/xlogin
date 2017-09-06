@@ -2,7 +2,7 @@ Xlogin.configure :sros do |os|
   os.timeout(300)
   os.prompt(/[>$#] /)
   os.prompt(/y\/n:/) do
-    puts opts[:assume_yes] ? 'y' : 'n'
+    puts opts[:assumeyes] ? 'y' : 'n'
   end
 
   os.bind(:login) do |*args|
@@ -16,15 +16,5 @@ Xlogin.configure :sros do |os|
     puts('enable-admin')
     waitfor(/Password:\s?/) && puts(password)
     waitfor
-  end
-
-  os.bind(:config) do
-    begin
-      cmd('environment no more')
-      resp = cmd('admin display-config')
-      resp.lines[2..-2].join.to_s
-    ensure
-      cmd('logout')
-    end
   end
 end

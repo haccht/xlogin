@@ -7,20 +7,4 @@ Xlogin.configure :vyos do |os|
     waitfor(/Password:\s/) && puts(password)
     waitfor
   end
-
-  os.bind(:config) do
-    begin
-      cmd('show configuration | no-more')
-    ensure
-      cmd('exit')
-    end
-  end
-
-  os.bind(:save) do
-    begin
-      cmd('save')
-    ensure
-      cmd('exit')
-    end
-  end
 end
