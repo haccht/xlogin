@@ -12,8 +12,8 @@ module Xlogin
           target_os  = Xlogin.factory.get_template(target[:type])
           target_uri = URI(target[:uri])
 
-          login    = @methods.delete(:login)
-          delegate = @methods.delete(:delegate)
+          login    = @methods.fetch(:login)
+          delegate = @methods.fetch(:delegate)
 
           userinfo = uri.userinfo.dup
           uri.userinfo = ''

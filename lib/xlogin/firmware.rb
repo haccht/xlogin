@@ -7,7 +7,7 @@ module Xlogin
 
     def initialize
       @timeout = 5
-      @on_exec = nil
+      @cmdhook = nil
       @prompts = Array.new
       @methods = Hash.new
     end
@@ -16,8 +16,8 @@ module Xlogin
       @timeout = val.to_i
     end
 
-    def on_exec(&block)
-      @on_exec = block
+    def hook(&block)
+      @cmdhook = block
     end
 
     def prompt(expect, &block)
@@ -42,20 +42,23 @@ module Xlogin
         end
       end
 
-      if @on_exec
-        klass.class_exec(@on_exec) do |on_exec|
-          alias_method :do_cmd, :cmd
-          define_method(:cmd) do |args|
-            args = {'String' => args.to_s} unless args.kind_of?(Hash)
-            instance_exec(args, &on_exec)
+      if @cmdhook
+        klass.class_exec(@cmdhook) do |cmdhook|
+          alias_method :pass, :puts
+          define_method(:puts) do |command|
+            instance_exec(command, &cmdhook)
           end
         end
       end
 
       if grant = opts.delete(:grant)
         mod_open, password, mod_close= grant.split(':')
-        klass.class_exec(mod_open, password, mod_close) do |mod_open, password, mod_close|
-          alias_method "__#{mod_open}".to_sym, mod_open.to_sym
+        klass.class_exec(mod_open.to_sym, password, mod_close) do |mod_open, password, mod_close|
+          if method_defined?(mod_open)
+            alias_method "__#{mod_open}".to_sym, mod_open
+            alias_method :enable, mod_open unless mod_open == :enable
+          end
+
           define_method(mod_open) do |*args, &block|
             args = [*args, password] unless password.empty?
             send("__#{mod_open}", *args)
@@ -64,7 +67,6 @@ module Xlogin
               cmd(mod_close)
             end
           end
-          alias_method :enable, mod_open unless mod_open.to_sym == :enable
         end
       end
 

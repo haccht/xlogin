@@ -23,7 +23,7 @@ module Xlogin
         names = names.map(&:strip).grep(/^\s*[^#]/)
         namecount = names.uniq.inject({}) { |a, e| a.merge(e => names.count(e)) }
         duplicate = namecount.keys.select { |name| namecount[name] > 1 }
-        raise Xlogin::GeneralError.new("Duplicate hosts found - #{duplicate.join(', ')}") unless duplicate.empty?
+        raise ArgumentError.new("Duplicate hosts found - #{duplicate.join(', ')}") unless duplicate.empty?
 
         current_namespace do
           description = Rake.application.last_description || "Run '#{RakeTask.current_namespace}'"
@@ -56,7 +56,6 @@ module Xlogin
     attr_accessor :silent
     attr_accessor :lockfile
     attr_accessor :logfile
-    attr_accessor :assumeyes
     attr_accessor :uncomment
 
     def initialize(name)
@@ -69,7 +68,6 @@ module Xlogin
       @silent        = Rake.application.options.silent
       @lockfile      = nil
       @logfile       = nil
-      @assumeyes     = false
       @uncomment     = false
 
       yield(self) if block_given?
@@ -114,7 +112,7 @@ module Xlogin
     end
 
     def run_task
-      raise Xlogin::GeneralError.new("missing xlogin_opts to connect to #{name}") unless @xlogin_opts[:type] && @xlogin_opts[:uri]
+      raise ArgumentError.new("missing xlogin_opts to connect to #{name}") unless @xlogin_opts[:type] && @xlogin_opts[:uri]
 
       loggers = [@xlogin_opts[:log]].flatten.compact
       loggers << $stdout unless silent || Rake.application.options.always_multitask
@@ -125,7 +123,6 @@ module Xlogin
       end
 
       @xlogin_opts[:log] = loggers unless loggers.empty?
-      @xlogin_opts[:assumeyes] ||= assumeyes
 
       begin
         @session = Xlogin.factory.build(@xlogin_opts)
