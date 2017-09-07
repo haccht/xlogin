@@ -12,6 +12,7 @@ module Xlogin
       @database  = Hash.new
       @templates = Hash.new
       @aliases   = Hash.new
+      @group     = nil
     end
 
     def load_template_files(*files)
@@ -52,8 +53,17 @@ module Xlogin
       @database[opts[:name]] = opts
     end
 
-    def list
-      @database.values
+    def list(name = nil)
+      keys = @database.keys
+      keys = keys.select { |key| key =~ /^#{name}(:|$)/ } unless name.nil?
+      @database.values_at(*keys)
+    end
+
+    def group(group_name)
+      current_group = @group
+      @group = [current_group, group_name].compact.join(':')
+      yield
+      @group = current_group
     end
 
     def build(args)
@@ -75,11 +85,11 @@ module Xlogin
       build(hostinfo.merge(args))
     end
 
-    def method_missing(name, *args, &block)
+    def method_missing(method_name, *args, &block)
       super unless caller_locations.first.label =~ /source/ and args.size >= 2
 
-      type = name.to_s.downcase
-      name = args.shift
+      type = method_name.to_s.downcase
+      name = [@group, args.shift].compact.join(':')
       uri  = args.shift
       opts = args.shift || {}
       set(type: type, name: name, uri: uri, **opts)
