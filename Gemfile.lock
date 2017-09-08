@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    xlogin (0.5.2)
+    xlogin (0.5.3)
       io-console
       net-ssh
       net-ssh-gateway

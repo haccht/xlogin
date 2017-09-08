@@ -82,9 +82,9 @@ module Xlogin
     end
 
     def tty(config)
-      Xlogin::CLI.usage('Invalid HOST-PATTERN') if config.hostlist.empty?
+      Xlogin::CLI.usage('Invalid parametors') if config.hostlist.empty?
 
-      puts "Trying #{config.hostlist.first}..."
+      puts "Trying #{config.hostlist.first[:name]}..."
       puts "Escape character is '^]'."
 
       config.hostlist = [config.hostlist.shift]
@@ -94,7 +94,7 @@ module Xlogin
     end
 
     def command(config)
-      Xlogin::CLI.usage('Missing argument') unless config.args
+      Xlogin::CLI.usage('Invalid parametors') if config.hostlist.empty? or config.args.nil?
 
       login(config) do |session|
         command_lines = ['', *config.args.split(';')]
@@ -103,7 +103,7 @@ module Xlogin
     end
 
     def command_load(config)
-      Xlogin::CLI.usage('Missing argument') unless config.args
+      Xlogin::CLI.usage('Invalid parametors') if config.hostlist.empty? or config.args.nil?
 
       login(config) do |session|
         command_lines = ['', *IO.readlines(config.args.to_s)]
@@ -121,6 +121,7 @@ module Xlogin
         begin
           hostname = host[:name]
           buffer   = StringIO.new
+
           loggers  = []
           loggers << buffer  if config.parallels != 1
           loggers << $stdout if config.parallels == 1
