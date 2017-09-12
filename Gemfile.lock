@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    xlogin (0.5.4)
+    xlogin (0.5.5)
       net-ssh
       net-ssh-gateway
       net-ssh-telnet
@@ -11,7 +11,7 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    net-ssh (4.1.0)
+    net-ssh (4.2.0)
     net-ssh-gateway (2.0.0)
       net-ssh (>= 4.0.0)
     net-ssh-telnet (0.2.0)
