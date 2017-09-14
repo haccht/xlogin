@@ -82,7 +82,7 @@ module Xlogin
     end
 
     def tty(config)
-      Xlogin::CLI.usage('Invalid parametors') if config.hostlist.empty?
+      Xlogin::CLI.usage('Invalid parametors: ' + config.hostexprs.join(' ')) if config.hostlist.empty?
 
       puts "Trying #{config.hostlist.first[:name]}..."
       puts "Escape character is '^]'."

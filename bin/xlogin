@@ -7,7 +7,7 @@ ENV['BUNDLE_GEMFILE'] = File.join(appdir, '..', 'Gemfile')
 
 Bundler.require
 
-require File.join(appdir, '..', 'lib', 'xlogin.rb')
-require File.join(appdir, '..', 'lib', 'xlogin', 'cli.rb')
+require 'xlogin'
+require 'xlogin/cli'
 
 Xlogin::CLI.run

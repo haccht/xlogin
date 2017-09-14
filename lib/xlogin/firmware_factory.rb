@@ -17,6 +17,7 @@ module Xlogin
 
     def load_template_files(*files)
       files.each do |file|
+        file = File.expand_path(file)
         next unless File.exist?(file) && file =~ /.rb$/
         require file
       end
@@ -41,6 +42,7 @@ module Xlogin
     end
 
     def source(file)
+      file = File.expand_path(file)
       return unless File.exist?(file)
       instance_eval(IO.read(file))
     end
