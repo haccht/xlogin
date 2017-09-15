@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    xlogin (0.5.6)
+    xlogin (0.5.8)
       net-ssh
       net-ssh-gateway
       net-ssh-telnet

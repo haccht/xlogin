@@ -10,9 +10,19 @@ module Xlogin
   DEFAULT_TEMPLATE_DIR   = File.join(ENV['HOME'], '.xlogin.d')
   BUILTIN_TEMPLATE_FILES = Dir.glob(File.join(File.dirname(__FILE__), 'xlogin', 'templates', '*.rb'))
 
-  class GeneralError < StandardError; end
+  class HostNotFound       < StandardError; end
+  class TemplateNotFound   < StandardError; end
+  class AuthorizationError < StandardError; end
 
   class << self
+
+    def authorize(boolean = false, &block)
+      @authorized = boolean == true || (block && block.call == true)
+    end
+
+    def authorized?
+      @authorized == true
+    end
 
     def factory
       @factory ||= Xlogin::FirmwareFactory.instance

@@ -35,9 +35,9 @@ module Xlogin
       parser.on('-T DIRECTORY', '--template-dir', String, 'The DIRECTORY to the template files.') { |v| config.templates += Dir.glob(File.join(v, '*.rb')) }
       parser.on('-l [DIRECTORY]', '--log',        String, 'The DIRECTORY to the output log file (default: $PWD/log).') { |v| config.logdir = v || Dir.pwd }
 
-      parser.on('-p NUM', '--parallels', Integer,   'The NUM of the threads. (default: 5).') { |v| config.parallels = v }
-      parser.on('-e',     '--enable',    TrueClass, 'Try to gain enable priviledge.')        { |v| config.enable    = v }
-      parser.on('-y',     '--assumeyes', TrueClass, 'Always answer "yes" if confirmed.')     { |v| config.assumeyes = v }
+      parser.on('-p NUM', '--parallels',  Integer,   'The NUM of the threads. (default: 5).') { |v| config.parallels  = v }
+      parser.on('-e',     '--enable',     TrueClass, 'Try to gain enable priviledge.')        { |v| config.enable     = v }
+      parser.on('-y',     '--assume-yes', TrueClass, 'Always answer "yes" if confirmed.')     { |v| config.assume_yes = v }
       parser.on('-h',     '--help', 'Show this message.') { Xlogin::CLI.usage }
 
       self.class.module_eval do
@@ -54,6 +54,7 @@ module Xlogin
       Xlogin.init do
         source(config.inventory)
         template(*config.templates)
+        authorize(config.assume_yes)
       end
 
       factory = Xlogin::FirmwareFactory.instance
@@ -112,12 +113,12 @@ module Xlogin
     end
 
     private
-    def login(config)
-      display = Mutex.new
-      config.parallels = [config.parallels, config.hostlist.size].min
+    def login(config, &block)
       FileUtils.mkdir_p(config.logdir) if config.logdir
+      config.parallels = [config.parallels, config.hostlist.size].min
 
-      Parallel.each(config.hostlist, in_thread: config.parallels) do |host|
+      display  = Mutex.new
+      Parallel.map(config.hostlist, in_thread: config.parallels) do |host|
         begin
           hostname = host[:name]
           buffer   = StringIO.new
@@ -127,8 +128,8 @@ module Xlogin
           loggers << $stdout if config.parallels == 1
           loggers << File.join(config.logdir, "#{hostname}.log") if config.logdir
 
-          session = Xlogin.get(hostname, assumeyes: config.assumeyes, enable: config.enable, log: loggers)
-          yield session
+          session = Xlogin.get(hostname, enable: config.enable, log: loggers)
+          block.call(session)
 
           if config.parallels > 1
             output = buffer.string.lines.map { |line| "#{hostname}: #{line}" }.join

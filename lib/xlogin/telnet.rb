@@ -53,7 +53,7 @@ module Xlogin
         end
       end
     rescue EOFError, Errno::ECONNRESET
-      $stdout.puts "\r\n", "Conneciton closed."
+      $stdout.puts "\r\n", "Conneciton closed.", "\r\n"
       self.close
     ensure
       $stdin.cooked!
