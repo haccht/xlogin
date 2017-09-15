@@ -71,18 +71,18 @@ module Xlogin
     def build(args)
       type = args.delete(:type)
       template = get_template(type)
-      raise Xlogin::GeneralError.new("Template not defined: #{type}") unless template
+      raise Xlogin::TemplateNotFound.new("template not found: '#{type}'") unless template
 
       uri  = args.delete(:uri)
       opts = args.reduce({}) { |a, (k, v)| a.merge(k.to_s.downcase.to_sym => v) }
-      raise Xlogin::GeneralError.new("Host not found: #{args}") unless uri
+      raise Xlogin::HostNotFound.new("connection not defined: '#{arg}'") unless uri
 
       template.dup.run(uri, opts)
     end
 
     def build_from_hostname(hostname, **args)
       hostinfo = get(hostname)
-      raise Xlogin::GeneralError.new("Host not found: #{hostname}") unless hostinfo
+      raise Xlogin::HostNotFound.new("host not found: '#{hostname}'") unless hostinfo
 
       build(hostinfo.merge(args))
     end

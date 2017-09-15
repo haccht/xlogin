@@ -14,7 +14,7 @@ module Xlogin
       @name     = @opts[:name] || @host
       @port     = @opts[:port]
       @userinfo = @opts[:userinfo].to_s
-      raise Xlogin::GeneralError.new('Argument error.') unless @host && @port
+      raise ArgumentError.new('device hostname or port not specified.') unless @host && @port
 
       @prompts  = @opts[:prompts] || [[/[$%#>] ?\z/n, nil]]
       @timeout  = @opts[:timeout] || 60
