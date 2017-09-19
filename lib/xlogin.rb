@@ -71,10 +71,6 @@ module Xlogin
       factory.set_template(name, template)
     end
 
-    def alias(new_name, name)
-      factory.alias_template(new_name, name)
-    end
-
   end
 
 end

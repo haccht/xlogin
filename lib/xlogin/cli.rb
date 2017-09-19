@@ -36,7 +36,7 @@ module Xlogin
       parser.on('-l [DIRECTORY]', '--log',        String, 'The DIRECTORY to the output log file (default: $PWD/log).') { |v| config.logdir = v || Dir.pwd }
 
       parser.on('-p NUM', '--parallels',  Integer,   'The NUM of the threads. (default: 5).') { |v| config.parallels  = v }
-      parser.on('-e',     '--enable',     TrueClass, 'Try to gain enable priviledge.')        { |v| config.enable     = v }
+      parser.on('-e',     '--enable',     TrueClass, 'Try to gain enable priviledge.')        { |v| config.autoenable = v }
       parser.on('-y',     '--assume-yes', TrueClass, 'Always answer "yes" if confirmed.')     { |v| config.assume_yes = v }
       parser.on('-h',     '--help', 'Show this message.') { Xlogin::CLI.usage }
 
@@ -128,7 +128,7 @@ module Xlogin
           loggers << $stdout if config.parallels == 1
           loggers << File.join(config.logdir, "#{hostname}.log") if config.logdir
 
-          session = Xlogin.get(hostname, enable: config.enable, log: loggers)
+          session = Xlogin.get(hostname, autoenable: config.autoenable, log: loggers)
           block.call(session)
 
           if config.parallels > 1

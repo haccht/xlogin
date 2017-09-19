@@ -11,7 +11,6 @@ module Xlogin
     def initialize
       @database  = Hash.new
       @templates = Hash.new
-      @aliases   = Hash.new
       @group     = nil
     end
 
@@ -19,26 +18,22 @@ module Xlogin
       files.each do |file|
         file = File.expand_path(file)
         next unless File.exist?(file) && file =~ /.rb$/
-        require file
+
+        name = File.basename(file, '.rb').scan(/\w+/).join.downcase
+        Xlogin.configure(name) { |firmware| firmware.instance_eval(IO.read(file)) }
       end
     end
 
     def get_template(name)
-      name = @aliases[name.to_s.downcase] || name.to_s.downcase
-      @templates[name]
+      @templates[name.to_s.downcase]
     end
 
     def set_template(name, template)
-      name = @aliases[name.to_s.downcase] || name.to_s.downcase
-      @templates[name] = template
+      @templates[name.to_s.downcase] = template
     end
 
     def list_templates
       @templates.keys
-    end
-
-    def alias_template(new_name, name)
-      @aliases[new_name.to_s.downcase] = name.to_s.downcase
     end
 
     def source(file)

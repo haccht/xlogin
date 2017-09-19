@@ -80,7 +80,7 @@ module Xlogin
         }.merge(opts)
       )
 
-      session.enable if session.respond_to?(:enable) && opts[:enable]
+      session.enable if session.respond_to?(:enable) && opts[:autoenable]
       session
     end
 
