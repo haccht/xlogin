@@ -1,61 +1,51 @@
 require 'uri'
 
 module Xlogin
-  class Firmware
+  class Template
 
-    module FirmwareDelegator
-      def run(uri, opts = {})
-        uri = URI(uri.to_s)
+    module RelayTemplate
+      def build(uri, **params)
+        login_host = params.delete(:relay)
+        return super(uri, **params) unless login_host
 
-        if hostname = opts.delete(:delegate)
-          target = Xlogin.factory.get(hostname)
-          target_os  = Xlogin.factory.get_template(target[:type])
-          target_uri = URI(target[:uri])
+        login_info = Xlogin.factory.get(login_host)
+        login_os   = Xlogin.factory.get_template(login_info[:type])
+        login_uri  = URI(login_info[:uri])
 
-          login    = @methods.fetch(:login)
-          delegate = @methods.fetch(:delegate)
+        login    = @methods.fetch(:login)
+        delegate = @methods.fetch(:delegate)
 
-          userinfo = uri.userinfo.dup
-          uri.userinfo = ''
+        relay_uri = URI(uri.to_s)
+        userinfo_cache = relay_uri.userinfo.dup
+        relay_uri.userinfo = ''
 
-          session = target_os.run(uri, opts)
-          session.instance_exec(*userinfo.split(':'), &login)
-          session.instance_exec(target_uri, opts, &delegate)
-          session
-        else
-          session = super(uri, opts)
-        end
+        session = login_os.build(relay_uri, **params)
+        session.instance_exec(*userinfo_cache.split(':'), &login)
+        session.instance_exec(login_uri, **params, &delegate)
+        session
       end
     end
 
-    prepend FirmwareDelegator
+    prepend RelayTemplate
+
 
     ### Usage:
     ## Write xloginrc file
     #
-    # vyos       'vyos01',          'telnet://user:pass@host:port'
-    # consolesrv 'vyos01::console', 'telnet://console_user:console_pass@console_host:console_port', delegate: 'vyos01'
+    # vyos      'vyos01',        'telnet://user:pass@host:port'
+    # relay_srv 'vyos01::relay', 'telnet://relay_user:relay_pass@relay_host:relay_port', relay: 'vyos01'
     #
     ## Write firmware definition
     #
-    # require 'timeout'
-    # Xlogin.configure :consolesrv do |os|
-    #   os.bind(:login) do |*args|
-    #    username, password = *args
-    #    waitfor(/login:\s*\z/)    && puts(username)
-    #    waitfor(/Password:\s*\z/) && puts(password)
-    #  end
+    # login do |username, password|
+    #   waitfor(/login:\s*\z/)    && puts(username)
+    #   waitfor(/Password:\s*\z/) && puts(password)
+    # end
     #
-    #  os.bind(:delegate) do |uri, opts|
-    #    begin
-    #      waittime = 3
-    #      Timeout.timeout(waittime) do
-    #        login(*uri.userinfo.split(':'))
-    #      end
-    #    rescue Timeout::Error
-    #    end
-    #  end
-    #end
+    # delegate do |uri, **opts|
+    #   cmd("telnet #{uri.host}")
+    #   login(*uri.userinfo.split(':'))
+    # end
 
   end
 end

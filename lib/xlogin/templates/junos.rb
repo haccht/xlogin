@@ -1,7 +1,6 @@
-timeout(300)
 prompt(/[>#] \z/)
 
-bind(:login) do |*args|
+login do |*args|
   username, password = *args
   waitfor(/login:\s/)  && puts(username)
   waitfor(/Password:/) && puts(password)

@@ -43,6 +43,7 @@ build-iPhoneSimulator/
 /.bundle/
 /vendor/bundle
 /lib/bundler/man/
+/Gemfile.lock
 
 # for a library or gem, you might want to ignore these files since the code is
 # intended to run in multiple environments; otherwise, check them in:
@@ -54,8 +55,6 @@ build-iPhoneSimulator/
 .rvmrc
 
 # End of https://www.gitignore.io/api/ruby
-/lib/xlogin/.xloginrc
-/lib/xlogin/_xloginrc
 /lib/xlogin/templates/*
 !/lib/xlogin/templates/vyos.rb
 !/lib/xlogin/templates/junos.rb
