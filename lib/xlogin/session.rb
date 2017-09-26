@@ -23,15 +23,22 @@ module Xlogin
       @logger   = update_logger
     end
 
-    def waitfor(*expect)
+    def waitfor(*expect, &block)
       if expect.compact.empty?
-        super(Regexp.union(*@prompts.map(&:first)), &@logger)
+        super(Regexp.union(*@prompts.map(&:first))) do |recvdata|
+          @logger.call(recvdata)
+          block.call(recvdata) if block
+        end
       else
-        line = super(*expect, &@logger)
+        line = super(*expect) do |recvdata|
+          @logger.call(recvdata)
+          block.call(recvdata) if block
+        end
+
         _, process = @prompts.find { |r, p| r =~ line && p }
         if process
           instance_eval(&process)
-          line += waitfor(*expect)
+          line += waitfor(*expect, &block)
         end
         line
       end

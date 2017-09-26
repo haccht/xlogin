@@ -52,7 +52,7 @@ module Xlogin
 
     def list(name = nil)
       keys = @database.keys
-      keys = keys.select { |key| key =~ /^#{name}(:|$)/ } unless name.nil?
+      keys = keys.select { |key| key =~ /^#{name}(:|$)/ } unless name.nil? || name.to_s == 'all'
       @database.values_at(*keys)
     end
 
