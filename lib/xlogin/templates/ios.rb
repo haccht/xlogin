@@ -1,4 +1,3 @@
-timeout(300)
 prompt(/[>$#]/)
 prompt(/yes \/ no: /) do
   puts (Xlogin.authorized?)? 'y' : 'n'

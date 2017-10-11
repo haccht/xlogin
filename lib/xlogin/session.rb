@@ -17,7 +17,7 @@ module Xlogin
       raise ArgumentError.new('device hostname or port not specified.') unless @host && @port
 
       @prompts  = @opts[:prompts] || [[/[$%#>] ?\z/n, nil]]
-      @timeout  = @opts[:timeout] || 60
+      @timeout  = @opts[:timeout] || 10
 
       @loglist  = [@opts[:log]].flatten.compact
       @logger   = update_logger

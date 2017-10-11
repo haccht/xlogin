@@ -1,4 +1,3 @@
-timeout(300)
 prompt(/[>#] \z/)
 
 bind(:login) do |*args|
