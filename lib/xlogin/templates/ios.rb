@@ -8,8 +8,13 @@ bind(:login) do |password|
   waitfor
 end
 
-bind(:enable) do |password|
+bind(:enable) do |password, &block|
   puts('enable')
   waitfor(/Password: /) && puts(password)
   waitfor
+
+  if block
+    block.call
+    cmd('disable')
+  end
 end

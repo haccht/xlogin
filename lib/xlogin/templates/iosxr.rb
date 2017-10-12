@@ -8,11 +8,10 @@ bind(:login) do |*args|
 end
 
 hook do |command|
-  if command =~ /^(?:adm |admi |admin )?\s*(?:con|rel|red|cle|hw|ro)/
-    # commands: configure, reload, redundancy, clear, hw-module, rollback
-    #   with or without admin prefix is prihibited if not authorized.
+  case command.strip
+  when /^conf/, /^ro/
     raise Xlogin::AuthorizationError.new("prohibited command: #{command}") unless Xlogin.authorized?
+  else
+    pass(command)
   end
-
-  pass(command)
 end

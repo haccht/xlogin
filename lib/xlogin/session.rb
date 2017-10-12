@@ -23,6 +23,15 @@ module Xlogin
       @logger   = update_logger
     end
 
+    def enable(*args)
+      # do nothing here.
+      # write bind(:enable) proc in the firmware template to override.
+    end
+
+    def enable_password
+      opts[:enablepw]
+    end
+
     def waitfor(*expect, &block)
       if expect.compact.empty?
         super(Regexp.union(*@prompts.map(&:first))) do |recvdata|
@@ -44,8 +53,8 @@ module Xlogin
       end
     end
 
-    def dup(opts = @opts)
-      self.class.new(opts)
+    def dup(**args)
+      self.class.new(**@opts.merge(args))
     end
 
     def lock(timeout: @timeout)

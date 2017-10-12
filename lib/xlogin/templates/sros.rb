@@ -10,7 +10,7 @@ bind(:login) do |*args|
   waitfor
 end
 
-bind(:enable_admin) do |password|
+bind(:enable) do |password|
   puts('enable-admin')
   waitfor(/Password:\s?/) && puts(password)
   waitfor

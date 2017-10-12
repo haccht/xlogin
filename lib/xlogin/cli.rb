@@ -128,13 +128,15 @@ module Xlogin
           loggers << $stdout if config.parallels == 1
           loggers << File.join(config.logdir, "#{hostname}.log") if config.logdir
 
-          session = Xlogin.get(hostname, autoenable: config.autoenable, log: loggers)
+          session = Xlogin.get(hostname, log: loggers)
+          session.enable(session.enable_password) if config.autoenable && session.respond_to?(:enable)
           block.call(session)
 
           if config.parallels > 1
             output = buffer.string.lines.map { |line| "#{hostname}: #{line}" }.join
             display.synchronize { $stdout.puts output }
           end
+
         rescue => e
           if config.parallels > 1
             output = "\n#{hostname}: [Error] #{e}"
