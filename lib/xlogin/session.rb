@@ -1,124 +1,148 @@
-require 'thread'
-require 'timeout'
+require 'fileutils'
+require 'net/ssh/gateway'
+require 'ostruct'
+require 'readline'
 require 'stringio'
 
 module Xlogin
-  module Session
+  module SessionModule
 
-    attr_reader   :opts
     attr_accessor :name
+    attr_accessor :opts
 
-    def configure_session(**opts)
-      @opts     = opts.dup
-      @host     = @opts[:host]
-      @name     = @opts[:name] || @host
-      @port     = @opts[:port]
-      @userinfo = @opts[:userinfo].to_s
-      raise ArgumentError.new('device hostname or port not specified.') unless @host && @port
+    def initialize(template, uri, **params)
+      @template = template
+      @scheme   = uri.scheme
+      @opts     = OpenStruct.new(params)
 
-      @prompts  = @opts[:prompts] || [[/[$%#>] ?\z/n, nil]]
-      @timeout  = @opts[:timeout] || 10
+      @host = uri.host
+      @name = uri.host
+      @port = uri.port
+      @port ||= case @scheme
+                when 'ssh'    then 22
+                when 'telnet' then 23
+                end
 
-      @loglist  = [@opts[:log]].flatten.compact
-      @logger   = update_logger
+      @username, @password = uri.userinfo.to_s.split(':')
+      raise ArgumentError.new('Device hostname or port not specified.') unless @host && @port
+
+      @output_logs = opts.log
+      @output_loggers = prebuild_loggers
+
+      ssh_tunnel(opts.via) if opts.via
+      max_retry = opts.retry || 1
+
+      begin
+        return super(
+          'Host'     => @host,
+          'Port'     => @port,
+          'Username' => @username,
+          'Password' => @password,
+          'Timeout'  => @template.timeout,
+          'Prompt'   => Regexp.union(*@template.prompt.map(&:first)),
+        )
+      rescue => e
+        $stdout.puts e
+        retry if (max_retry -= 1) > 0
+        raise e
+      end
     end
 
-    def enable(*args)
-      # do nothing here.
-      # write bind(:enable) proc in the firmware template to override.
+    def prompt
+      cmd('').lines.last.chomp
     end
 
-    def enable_password
-      opts[:enablepw]
+    def puts(line)
+      line = instance_exec(line, &@template.interrupt) if @template.interrupt
+      super(line)
+    end
+
+    def method_missing(name, *args, &block)
+      process = @template.methods[name]
+      super unless process
+
+      instance_exec(*args, &process)
+    end
+
+    def respond_to_missing?(name, _)
+      @template.methods[name]
     end
 
     def waitfor(*expect, &block)
-      if expect.compact.empty?
-        super(Regexp.union(*@prompts.map(&:first))) do |recvdata|
-          @logger.call(recvdata)
-          block.call(recvdata) if block
-        end
-      else
-        line = super(*expect) do |recvdata|
-          @logger.call(recvdata)
-          block.call(recvdata) if block
-        end
+      return waitfor(Regexp.union(*@template.prompt.map(&:first)), &block) if expect.empty?
 
-        _, process = @prompts.find { |r, p| r =~ line && p }
-        if process
-          instance_eval(&process)
-          line += waitfor(*expect, &block)
-        end
-        line
+      line = super(*expect) do |recvdata|
+        output(recvdata, &block)
       end
+
+      _, process = @template.prompt.find { |r, p| r =~ line && p }
+      if process
+        instance_eval(&process)
+        line += waitfor(*expect, &block)
+      end
+
+      line
     end
 
-    def dup(**args)
-      self.class.new(**@opts.merge(args))
-    end
-
-    def lock(timeout: @timeout)
-      @mutex ||= Mutex.new
-
-      begin
-        Timeout.timeout(timeout) { @mutex.lock }
-        yield self
-      ensure
-        @mutex.unlock if @mutex.locked?
-      end
-    end
-
-    def with_retry(max_retry: 1)
-      begin
-        yield self
-      rescue => e
-        renew if respond_to?(:renew)
-        raise e if (max_retry -= 1) < 0
-        retry
-      end
+    def dup
+      uri = URI::Generic.build(@scheme, [@username, @password].compact.join(':'), @host, @port)
+      self.class.new(@template, uri, **opts.to_h)
     end
 
     def enable_log(out = $stdout)
-      enabled = @loglist.include?(out)
-      unless enabled
-        @loglist.push(out)
-        update_logger
-      end
-
+      @output_loggers = prebuild_loggers(@output_logs + [out])
       if block_given?
         yield
-        disable_log(out) unless enabled
+        @output_loggers = prebuild_loggers
       end
     end
 
     def disable_log(out = $stdout)
-      enabled = @loglist.include?(out)
-      if enabled
-        @loglist.delete(out)
-        update_logger
-      end
-
+      @output_loggers = prebuild_loggers(@output_logs - [out])
       if block_given?
         yield
-        enable_log(out) if enabled
+        @output_loggers = prebuild_loggers
       end
     end
 
     private
-    def update_logger
-      loglist = [@loglist].flatten.uniq.map do |log|
-        case log
-        when String
-          log = File.open(log, 'a+')
-          log.binmode
-          log.sync = true
-          log
-        when IO, StringIO
-          log
-        end
-      end
+    def ssh_tunnel(gateway)
+      gateway_uri = URI(gateway)
+      username, password = *gateway_uri.userinfo.split(':')
 
-      @logger = lambda { |c| loglist.compact.each { |o| o.syswrite c } }
+      case gateway_uri.scheme
+      when 'ssh'
+        gateway = Net::SSH::Gateway.new(
+          gateway_uri.host,
+          username,
+          password: password,
+          port: gateway_uri.port || 22
+        )
+
+        @port = gateway.open(@host, @port)
+        @host = '127.0.0.1'
+      end
     end
+
+    def output(text, &block)
+      [*@output_loggers, block].compact.each { |logger| logger.call(text) }
+    end
+
+    def prebuild_loggers(output_logs = @output_logs)
+      [output_logs].flatten.compact.uniq.map do |output_log|
+        logger = case output_log
+                 when String
+                   FileUtils.mkdir_p(File.dirname(output_log))
+                   File.open(output_log, 'a+').tap do |file|
+                     file.binmode
+                     file.sync = true
+                   end
+                 when IO, StringIO
+                   output_log
+                 end
+        lambda { |c| logger.syswrite c if logger }
+      end
+    end
+
   end
 end

@@ -2,6 +2,7 @@ require 'rake'
 require 'rake/tasklib'
 require 'readline'
 require 'thread'
+require 'stringio'
 
 module Xlogin
   class RakeTask < Rake::TaskLib
@@ -9,167 +10,95 @@ module Xlogin
     class << self
       include Rake::DSL
 
-      def mutex
-        @mutex ||= Mutex.new
-      end
-
-      def load(file, &block)
-        Xlogin.factory.source(file)
-        hostnames = Xlogin.factory.list.map { |e| e[:name] }
-        bulk(hostnames, &block)
-      end
-
       def bulk(names, &block)
-        names = names.map(&:strip).grep(/^\s*[^#]/)
-        namecount = names.uniq.inject({}) { |a, e| a.merge(e => names.count(e)) }
-        duplicate = namecount.keys.select { |name| namecount[name] > 1 }
-        raise ArgumentError.new("Duplicate hosts found - #{duplicate.join(', ')}") unless duplicate.empty?
+        current_namespace do |path|
+          description = Rake.application.last_description
 
-        current_namespace do
-          description = Rake.application.last_description || "Run '#{RakeTask.current_namespace}'"
-
+          names = names.map(&:strip).grep(/^\s*[^#]/).uniq
           names.each do |name|
-            desc "#{description} (#{name})"
+            desc description || "Run '#{path}:#{name}'"
             RakeTask.new(name, &block)
           end
         end
       end
 
       def current_namespace
-        path = Rake.application.current_scope.path
-
-        if path.empty?
-          path = self.name.split('::').first.downcase
-          namespace(path) { yield } if block_given?
-        else
-          yield if block_given?
+        Rake.application.current_scope.path.tap do |path|
+          if path.empty?
+            path = self.name.split('::').first.downcase
+            namespace(path) { yield(path) } if block_given?
+          else
+            yield(path) if block_given?
+          end
         end
-
-        path
       end
     end
 
 
     attr_reader   :name
-    attr_accessor :xlogin_opts
-    attr_accessor :fail_on_error
+    attr_accessor :lock
+    attr_accessor :log
     attr_accessor :silent
-    attr_accessor :lockfile
-    attr_accessor :logfile
-    attr_accessor :uncomment
 
     def initialize(name)
-      @name          = name
-      @xlogin_opts   = Xlogin.factory.get(name) || {}
-      @session       = nil
-      @taskrunner    = nil
-
-      @fail_on_error = true
-      @silent        = Rake.application.options.silent
-      @lockfile      = nil
-      @logfile       = nil
-      @uncomment     = false
+      @name   = name
+      @runner = nil
+      @silent ||= Rake.application.options.silent
 
       yield(self) if block_given?
-      define
+      define_task
     end
 
     def start(&block)
-      @taskrunner = block
-    end
-
-    def safe_puts(*messages, **opts)
-      opts[:io] ||= $stdout
-      return if @silent && !opts[:force]
-      RakeTask.mutex.synchronize do
-        messages.flat_map { |message| message.to_s.lines }.each do |line|
-          line.gsub!("\r", "")
-          opts[:io].puts (Rake.application.options.always_multitask)? "#{name}\t#{line}" : line
-        end
-      end
+      @runner = block
     end
 
     private
-    def define
-      RakeTask.current_namespace do
-        desc Rake.application.last_description || "Run '#{RakeTask.current_namespace}'"
-        Rake.application.last_description = nil if uncomment
+    def define_task
+      RakeTask.current_namespace do |path|
+        desc Rake.application.last_description || "Run '#{path}:#{name}'"
 
-        if lockfile
-          task(name => lockfile)
-          file(lockfile) do
-            run_task
-
-            mkdir_p(File.dirname(lockfile), verbose: Rake.application.options.trace)
-            touch(lockfile, verbose: Rake.application.options.trace)
+        if lock
+          task(name => lock)
+          file(lock) do
+            invoke
+            mkdir_p(File.dirname(lock), verbose: Rake.application.options.trace)
+            touch(lock, verbose: Rake.application.options.trace)
           end
         else
-          task(name) do
-            run_task
-          end
+          task(name) { invoke }
         end
       end
     end
 
-    def run_task
-      raise ArgumentError.new("missing xlogin_opts to connect to #{name}") unless @xlogin_opts[:type] && @xlogin_opts[:uri]
+    def invoke
+      loggers = []
 
-      loggers = [@xlogin_opts[:log]].flatten.compact
-      loggers << $stdout unless silent || Rake.application.options.always_multitask
-
-      if logfile
-        mkdir_p(File.dirname(logfile), verbose: Rake.application.options.trace)
-        loggers << logfile
+      if log
+        mkdir_p(File.dirname(log), verbose: Rake.application.options.trace)
+        loggers << log
       end
 
-      @xlogin_opts[:log] = loggers unless loggers.empty?
+      if Rake.application.options.always_multitask
+        buffer = StringIO.new
+        loggers << buffer  unless silent
 
-      begin
-        @session = Xlogin.factory.build(@xlogin_opts)
-        if @session && @taskrunner
-          @session.extend(SessionExt)
-
-          # pass RakeTask#safe_puts method to the session instance.
-          method_proc = method(:safe_puts)
-          @session.define_singleton_method(:safe_puts) { |*args| method_proc.call(*args) }
-
-          @taskrunner.call(@session) if @taskrunner && @session
+        begin
+          session = Xlogin.factory.build_from_hostname(name, log: loggers)
+          @runner.call(session)
+          $stdout.puts buffer.string.lines.map { |line| "#{name}\t" + line.gsub("\r", '') }
+        rescue => e
+          $stdout.puts buffer.string.lines.map { |line| "#{name}\t" + line.gsub("\r", '') }
+          $stderr.puts "#{name}\t#{e}"
         end
-      rescue => e
-        raise e if fail_on_error
-        safe_puts(e, io: $stderr, force: true)
-      end
-    end
+      else
+        loggers << $stdout unless silent
 
-    module SessionExt
-      def cmd(*args)
-        message = super(*args)
-        safe_puts(message, io: $stdout) if Rake.application.options.always_multitask
-        message = yield(message) if block_given?
-        message
-      end
-
-      def readline(command)
-        prompt = StringIO.new
-        safe_puts(cmd('').lines.last, io: prompt, force: true)
-
-        my_command = RakeTask.mutex.synchronize do
-          Readline.pre_input_hook = lambda do
-            Readline.insert_text(command)
-            Readline.redisplay
-          end
-
-          Readline.readline("\e[E\e[K#{prompt.string.chomp}", true)
-        end
-
-        case my_command.strip
-        when /^\s*#/, ''
-          # do nothing and skip this command
-        when command.strip
-          cmd(my_command)
-        else
-          cmd(my_command)
-          readline(command)
+        begin
+          session = Xlogin.factory.build_from_hostname(name, log: loggers)
+          @runner.call(session)
+        rescue => e
+          $stderr.puts e
         end
       end
     end

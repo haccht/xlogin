@@ -5,19 +5,20 @@ require 'xlogin/session'
 module Xlogin
   class Telnet < Net::Telnet
 
-    include Session
+    prepend SessionModule
 
-    def initialize(**opts)
-      configure_session(opts.merge(port: opts[:port] || 23))
+    alias_method :telnet_login, :login
+    undef_method :login
 
-      super(
-        'Host'    => @host,
-        'Port'    => @port,
-        'Timeout' => @timeout,
-        'Prompt'  => Regexp.union(*@prompts.map(&:first))
-      )
+    def initialize(params)
+      username = params.delete('Username')
+      password = params.delete('Password')
+      super(params)
 
-      login(*@userinfo.split(':')) if respond_to?(:login) && !@userinfo.empty?
+      if username || password
+        return login(username, password) if respond_to?(:login)
+        telnet_login(username, password)
+      end
     end
 
     def interact!
@@ -39,13 +40,13 @@ module Xlogin
             rescue IO::WaitReadable
             end
 
-            raise EOFError if bs == "\u001D" # <Ctrl-]> for quit
+            raise EOFError if bs == "\u001D" # <Ctrl-]> to force quit
             @sock.syswrite(bs)
           when @sock
             begin
               bs = fh.readpartial(1024)
               $stdout.syswrite(bs)
-              @logger.call(bs)
+              output(bs)
             rescue Errno::EAGAIN
               retry
             end

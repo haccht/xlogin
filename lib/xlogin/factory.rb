@@ -1,0 +1,88 @@
+require 'singleton'
+require 'xlogin/template'
+
+module Xlogin
+  class Factory
+
+    include Singleton
+
+    def initialize
+      @database  = Hash.new
+      @templates = Hash.new
+      @group     = nil
+    end
+
+    def source(file)
+      file = File.expand_path(file)
+      instance_eval(IO.read(file)) if File.exist?(file)
+    end
+
+    def get(name)
+      @database[name]
+    end
+
+    def set(**params)
+      name = params[:name]
+      @database[name] = params if name
+    end
+
+    def list(name = nil)
+      keys = @database.keys
+      keys = keys.select { |key| key =~ /^#{name}(:|$)/ } unless name.nil? || name.to_s == 'all'
+      @database.values_at(*keys)
+    end
+
+    def get_template(name)
+      @templates[name.to_s.downcase] ||= Xlogin::Template.new
+    end
+
+    def set_template(*files)
+      files.each do |file|
+        file = File.expand_path(file)
+        next unless File.exist?(file) && file =~ /.rb$/
+
+        name = File.basename(file, '.rb').scan(/\w+/).join('_')
+        template = get_template(name)
+        template.instance_eval(IO.read(file))
+        @templates[name.to_s.downcase] = template
+      end
+    end
+
+    def list_templates
+      @templates.keys
+    end
+
+    def group(group_name)
+      current_group = @group
+      @group = [current_group, group_name.to_s].compact.join(':')
+      yield
+      @group = current_group
+    end
+
+    def build(type:, uri:, **params)
+      template = get_template(type)
+      raise Xlogin::SessionNotFound.new("Target not defined") unless uri
+      raise Xlogin::TemplateNotFound.new("Template not found: '#{type}'") unless template
+
+      template.build(uri, **params)
+    end
+
+    def build_from_hostname(hostname, **params)
+      hostinfo = get(hostname)
+      raise Xlogin::SessionNotFound.new("Host not found: '#{hostname}'") unless hostinfo
+
+      build(hostinfo.merge(**params))
+    end
+
+    def method_missing(method_name, *args, &block)
+      super unless caller_locations.first.label == 'source' and args.size >= 2
+
+      type = method_name.to_s.downcase
+      name = [@group, args.shift].compact.join(':')
+      uri  = args.shift
+      opts = args.shift || {}
+      set(type: type, name: name, uri: uri, **opts)
+    end
+
+  end
+end

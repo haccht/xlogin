@@ -1,52 +1,22 @@
 $:.unshift File.dirname(__FILE__)
 
-require 'xlogin/firmware'
-require 'xlogin/firmware_factory'
+require 'xlogin/factory'
 require 'xlogin/version'
 
 module Xlogin
 
-  DEFAULT_SOURCE_FILE    = File.join(ENV['HOME'], '.xloginrc')
+  DEFAULT_INVENTORY_FILE = File.join(ENV['HOME'], '.xloginrc')
   DEFAULT_TEMPLATE_DIR   = File.join(ENV['HOME'], '.xlogin.d')
   BUILTIN_TEMPLATE_FILES = Dir.glob(File.join(File.dirname(__FILE__), 'xlogin', 'templates', '*.rb'))
 
-  class HostNotFound       < StandardError; end
+  class SessionNotFound    < StandardError; end
   class TemplateNotFound   < StandardError; end
   class AuthorizationError < StandardError; end
 
   class << self
 
-    def authorize(boolean = false, &block)
-      @authorized = boolean == true || (block && block.call == true)
-    end
-
-    def authorized?
-      @authorized == true
-    end
-
     def factory
-      @factory ||= Xlogin::FirmwareFactory.instance
-    end
-
-    def init(&block)
-      instance_eval(&block)
-
-      factory.source(DEFAULT_SOURCE_FILE) if factory.list.empty?
-      if factory.list_templates.empty?
-        unless File.exist?(DEFAULT_TEMPLATE_DIR)
-          FileUtils.mkdir_p(DEFAULT_TEMPLATE_DIR)
-          Xlogin::BUILTIN_TEMPLATE_FILES.each { |file| FileUtils.cp(file, DEFAULT_TEMPLATE_DIR) }
-        end
-        factory.load_template_files(*Dir.glob(File.join(DEFAULT_TEMPLATE_DIR, '*.rb')))
-      end
-    end
-
-    def source(source_file)
-      factory.source(source_file)
-    end
-
-    def template(*template_files)
-      factory.load_template_files(*template_files)
+      @factory ||= Xlogin::Factory.instance
     end
 
     def get(hostname, args = {})
@@ -59,16 +29,40 @@ module Xlogin
       end
     end
 
+    def configure(&block)
+      instance_eval(&block) if block
+
+      source(DEFAULT_INVENTORY_FILE) if factory.list.empty?
+      if factory.list_templates.empty?
+        unless Dir.exist?(DEFAULT_TEMPLATE_DIR)
+          FileUtils.mkdir_p(DEFAULT_TEMPLATE_DIR)
+          Xlogin::BUILTIN_TEMPLATE_FILES.each { |file| FileUtils.cp(file, DEFAULT_TEMPLATE_DIR) }
+        end
+        template_dir(DEFAULT_TEMPLATE_DIR)
+      end
+    end
+
+    def authorized?
+      @authorized == true
+    end
+
+    private
+    def authorize(boolean = false, &block)
+      @authorized = boolean == true || (block && block.call == true)
+    end
+
+    def source(source_file)
+      factory.source(source_file)
+    end
+
+    def template(*template_files)
+      factory.set_template(*template_files)
+    end
+
     def template_dir(*template_dirs)
       template_dirs.each do |template_dir|
         template(*Dir.glob(File.join(template_dir, '*.rb')))
       end
-    end
-
-    def configure(name)
-      template = factory.get_template(name) || Xlogin::Firmware.new
-      yield template if block_given?
-      factory.set_template(name, template)
     end
 
   end
