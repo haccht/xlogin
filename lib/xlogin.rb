@@ -56,7 +56,7 @@ module Xlogin
     end
 
     def template(*template_files)
-      factory.set_template(*template_files)
+      factory.source_template(*template_files)
     end
 
     def template_dir(*template_dirs)

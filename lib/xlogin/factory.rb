@@ -12,18 +12,20 @@ module Xlogin
       @group     = nil
     end
 
-    def source(file)
-      file = File.expand_path(file)
-      instance_eval(IO.read(file)) if File.exist?(file)
-    end
-
-    def get(name)
-      @database[name]
+    def source(*files)
+      files.each do |file|
+        file = File.expand_path(file)
+        instance_eval(IO.read(file)) if File.exist?(file)
+      end
     end
 
     def set(**params)
       name = params[:name]
       @database[name] = params if name
+    end
+
+    def get(name)
+      @database[name]
     end
 
     def list(name = nil)
@@ -32,20 +34,24 @@ module Xlogin
       @database.values_at(*keys)
     end
 
-    def get_template(name)
-      @templates[name.to_s.downcase] ||= Xlogin::Template.new
-    end
-
-    def set_template(*files)
+    def source_template(*files)
       files.each do |file|
         file = File.expand_path(file)
-        next unless File.exist?(file) && file =~ /.rb$/
-
         name = File.basename(file, '.rb').scan(/\w+/).join('_')
-        template = get_template(name)
-        template.instance_eval(IO.read(file))
-        @templates[name.to_s.downcase] = template
+        next unless File.exist?(file)
+
+        set_template(name, IO.read(file))
       end
+    end
+
+    def set_template(name, text)
+      template = get_template(name)
+      template.instance_eval(text)
+      @templates[name.to_s.downcase] = template
+    end
+
+    def get_template(name)
+      @templates[name.to_s.downcase] ||= Xlogin::Template.new
     end
 
     def list_templates
