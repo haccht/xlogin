@@ -30,16 +30,7 @@ module Xlogin
     end
 
     def configure(&block)
-      instance_eval(&block) if block
-
-      source(DEFAULT_INVENTORY_FILE) if factory.list.empty?
-      if factory.list_templates.empty?
-        unless Dir.exist?(DEFAULT_TEMPLATE_DIR)
-          FileUtils.mkdir_p(DEFAULT_TEMPLATE_DIR)
-          Xlogin::BUILTIN_TEMPLATE_FILES.each { |file| FileUtils.cp(file, DEFAULT_TEMPLATE_DIR) }
-        end
-        template_dir(DEFAULT_TEMPLATE_DIR)
-      end
+      instance_eval(&block)
     end
 
     def authorized?
@@ -51,18 +42,23 @@ module Xlogin
       @authorized = boolean == true || (block && block.call == true)
     end
 
-    def source(source_file)
+    def source(source_file = DEFAULT_INVENTORY_FILE)
       factory.source(source_file)
     end
 
     def template(*template_files)
-      factory.source_template(*template_files)
+      return factory.source_template(*template_files) unless template_files.empty?
+
+      unless Dir.exist?(DEFAULT_TEMPLATE_DIR)
+        FileUtils.mkdir_p(DEFAULT_TEMPLATE_DIR)
+        BUILTIN_TEMPLATE_FILES.each { |file| FileUtils.cp(file, DEFAULT_TEMPLATE_DIR) }
+      end
+      template_dir(DEFAULT_TEMPLATE_DIR)
     end
 
     def template_dir(*template_dirs)
-      template_dirs.each do |template_dir|
-        template(*Dir.glob(File.join(template_dir, '*.rb')))
-      end
+      files = template_dirs.flat_map { |dir| Dir.glob(File.join(dir, '*.rb')) }
+      template(*files)
     end
 
   end

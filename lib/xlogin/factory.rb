@@ -67,7 +67,6 @@ module Xlogin
 
     def build(type:, uri:, **params)
       template = get_template(type)
-      raise Xlogin::SessionNotFound.new("Target not defined") unless uri
       raise Xlogin::TemplateNotFound.new("Template not found: '#{type}'") unless template
 
       template.build(uri, **params)

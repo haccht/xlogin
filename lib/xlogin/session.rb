@@ -1,7 +1,6 @@
 require 'fileutils'
 require 'net/ssh/gateway'
 require 'ostruct'
-require 'readline'
 require 'stringio'
 
 module Xlogin
@@ -42,7 +41,6 @@ module Xlogin
           'Prompt'   => Regexp.union(*@template.prompt.map(&:first)),
         )
       rescue => e
-        $stdout.puts e
         retry if (max_retry -= 1) > 0
         raise e
       end
@@ -108,10 +106,9 @@ module Xlogin
     private
     def ssh_tunnel(gateway)
       gateway_uri = URI(gateway)
-      username, password = *gateway_uri.userinfo.split(':')
-
       case gateway_uri.scheme
       when 'ssh'
+        username, password = *gateway_uri.userinfo.split(':')
         gateway = Net::SSH::Gateway.new(
           gateway_uri.host,
           username,
@@ -140,6 +137,7 @@ module Xlogin
                  when IO, StringIO
                    output_log
                  end
+
         lambda { |c| logger.syswrite c if logger }
       end
     end

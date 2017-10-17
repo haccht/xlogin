@@ -8,9 +8,6 @@ require 'stringio'
 module Xlogin
   class CLI
 
-    DEFAULT_INVENTORY_PATH = File.join(ENV['HOME'], '.xloginrc')
-    DEFAULT_TEMPLATE_DIR   = File.join(ENV['HOME'], '.xlogin.d')
-
     def self.run(args = ARGV)
       config = getopts(args)
       client = Xlogin::CLI.new
@@ -23,10 +20,10 @@ module Xlogin
     def self.getopts(args)
       config = OpenStruct.new(
         task: 'tty',
-        inventory: DEFAULT_INVENTORY_PATH,
-        parallels: 5,
-        templates: [],
         hostlist:  [],
+        parallels: 5,
+        inventory: nil,
+        templates: [],
       )
 
       parser = OptionParser.new
@@ -53,7 +50,6 @@ module Xlogin
         end
       end
 
-      config.templates += Dir.glob(File.join(DEFAULT_TEMPLATE_DIR, '*.rb')) if config.templates.empty?
       Xlogin.configure do
         source(config.inventory)
         template(*config.templates)

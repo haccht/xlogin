@@ -4,7 +4,7 @@ module Xlogin
   class Template
 
     module RelayTemplate
-      def build(uri, **params) 
+      def build(uri, **params)
         login_host = params.delete(:relay)
         return super(uri, **params) unless login_host
 
@@ -37,14 +37,12 @@ module Xlogin
     #
     ## Write firmware definition
     #
-    # require 'timeout'
-    # login do |*args|
-    #   username, password = *args
+    # login do |username, password|
     #   waitfor(/login:\s*\z/)    && puts(username)
     #   waitfor(/Password:\s*\z/) && puts(password)
     # end
     #
-    # delegate do |uri, opts|
+    # delegate do |uri, **opts|
     #   cmd("telnet #{uri.host}")
     #   login(*uri.userinfo.split(':'))
     # end
