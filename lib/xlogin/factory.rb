@@ -13,7 +13,7 @@ module Xlogin
     end
 
     def source(*files)
-      files.each do |file|
+      files.compact.each do |file|
         file = File.expand_path(file)
         instance_eval(IO.read(file)) if File.exist?(file)
       end
@@ -35,7 +35,7 @@ module Xlogin
     end
 
     def source_template(*files)
-      files.each do |file|
+      files.compact.each do |file|
         file = File.expand_path(file)
         name = File.basename(file, '.rb').scan(/\w+/).join('_')
         next unless File.exist?(file)
@@ -67,20 +67,20 @@ module Xlogin
 
     def build(type:, uri:, **params)
       template = get_template(type)
-      raise Xlogin::TemplateNotFound.new("Template not found: '#{type}'") unless template
+      raise Xlogin::TemplateError.new("Template not found: '#{type}'") unless template
 
       template.build(uri, **params)
     end
 
     def build_from_hostname(hostname, **params)
       hostinfo = get(hostname)
-      raise Xlogin::SessionNotFound.new("Host not found: '#{hostname}'") unless hostinfo
+      raise Xlogin::SessionError.new("Host not found: '#{hostname}'") unless hostinfo
 
       build(hostinfo.merge(**params))
     end
 
     def method_missing(method_name, *args, &block)
-      super unless caller_locations.first.label == 'source' and args.size >= 2
+      super unless caller_locations.first.label == 'block in source' and args.size >= 2
 
       type = method_name.to_s.downcase
       name = [@group, args.shift].compact.join(':')

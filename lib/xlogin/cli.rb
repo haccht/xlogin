@@ -51,12 +51,13 @@ module Xlogin
       end
 
       Xlogin.configure do
-        source(config.inventory)
         template(*config.templates)
+        source(config.inventory)
         authorize(config.assume_yes)
       end
 
-      config.hostlist += parser.parse(args).flat_map do |target|
+      args = parser.parse(args)
+      config.hostlist += args.flat_map do |target|
         hostlist = Xlogin.factory.list(target)
         hostlist.tap { |e| raise "Invalid inventory - #{target}" if e.empty? }
       end
@@ -103,7 +104,6 @@ module Xlogin
 
     private
     def login(config, &block)
-      display = Mutex.new
       buffer  = StringIO.new
 
       Parallel.map(config.hostlist, in_thread: config.parallels) do |hostinfo|
@@ -120,13 +120,13 @@ module Xlogin
 
           block.call(session)
         rescue => e
-          lines = (config.parallels > 1)? "\n#{hostname}\t[Error] #{e}" : "\n[Error] #{e}"
-          display.synchronize { $stderr.puts lines }
+          lines = (config.parallels > 1)? "\n#{hostname}\t| [Error] #{e}" : "\n[Error] #{e}"
+          lines.each { |line| $stderr.print "#{line.chomp}\n" }
         end
 
         if config.parallels > 1
-          lines = buffer.string.lines.map { |line| "#{hostname}\t" + line.gsub("\r", '') }
-          display.synchronize { $stdout.puts lines }
+          lines = buffer.string.lines.map { |line| "#{hostname}\t| " + line.gsub("\r", '') }
+          lines.each { |line| $stderr.print "#{line.chomp}\n" }
         end
       end
     end

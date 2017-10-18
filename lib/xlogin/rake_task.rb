@@ -1,6 +1,5 @@
 require 'rake'
 require 'rake/tasklib'
-require 'thread'
 require 'stringio'
 
 module Xlogin
@@ -30,10 +29,6 @@ module Xlogin
             yield(path) if block_given?
           end
         end
-      end
-
-      def mutex
-        @mutex ||= Mutex.new
       end
     end
 
@@ -89,14 +84,12 @@ module Xlogin
         begin
           session = Xlogin.factory.build_from_hostname(name, log: loggers)
           @runner.call(session)
-          RakeTask.mutex.synchronize do
-            $stdout.puts buffer.string.lines.map { |line| "#{name}\t" + line.gsub("\r", '') }
-          end
+          lines = buffer.string.lines.map { |line| "#{name}\t" + line.gsub("\r", '') }
+          lines.each { |line| $stdout.print line.chomp + "\n" }
         rescue => e
-          RakeTask.mutex.synchronize do
-            $stdout.puts buffer.string.lines.map { |line| "#{name}\t" + line.gsub("\r", '') }
-            $stderr.puts "#{name}\t#{e}"
-          end
+          lines = buffer.string.lines.map { |line| "#{name}\t" + line.gsub("\r", '') }
+          lines.each { |line| $stdout.print line.chomp + "\n" }
+          $stderr.puts "#{name}\t#{e}"
         end
       else
         loggers << $stdout unless silent
