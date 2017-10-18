@@ -51,8 +51,8 @@ module Xlogin
       end
 
       Xlogin.configure do
-        source(config.inventory)
         template(*config.templates)
+        source(config.inventory)
         authorize(config.assume_yes)
       end
 

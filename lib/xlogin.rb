@@ -42,8 +42,8 @@ module Xlogin
       @authorized = boolean == true || (block && block.call == true)
     end
 
-    def source(source_file = DEFAULT_INVENTORY_FILE)
-      factory.source(source_file)
+    def source(source_file)
+      factory.source(source_file || DEFAULT_INVENTORY_FILE)
     end
 
     def template(*template_files)

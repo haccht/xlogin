@@ -13,7 +13,7 @@ module Xlogin
     end
 
     def source(*files)
-      files.each do |file|
+      files.compact.each do |file|
         file = File.expand_path(file)
         instance_eval(IO.read(file)) if File.exist?(file)
       end
@@ -35,7 +35,7 @@ module Xlogin
     end
 
     def source_template(*files)
-      files.each do |file|
+      files.compact.each do |file|
         file = File.expand_path(file)
         name = File.basename(file, '.rb').scan(/\w+/).join('_')
         next unless File.exist?(file)
@@ -80,7 +80,7 @@ module Xlogin
     end
 
     def method_missing(method_name, *args, &block)
-      super unless caller_locations.first.label == 'source' and args.size >= 2
+      super unless caller_locations.first.label == 'block in source' and args.size >= 2
 
       type = method_name.to_s.downcase
       name = [@group, args.shift].compact.join(':')
