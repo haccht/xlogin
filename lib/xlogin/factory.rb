@@ -67,14 +67,14 @@ module Xlogin
 
     def build(type:, uri:, **params)
       template = get_template(type)
-      raise Xlogin::TemplateNotFound.new("Template not found: '#{type}'") unless template
+      raise Xlogin::TemplateError.new("Template not found: '#{type}'") unless template
 
       template.build(uri, **params)
     end
 
     def build_from_hostname(hostname, **params)
       hostinfo = get(hostname)
-      raise Xlogin::SessionNotFound.new("Host not found: '#{hostname}'") unless hostinfo
+      raise Xlogin::SessionError.new("Host not found: '#{hostname}'") unless hostinfo
 
       build(hostinfo.merge(**params))
     end

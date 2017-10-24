@@ -82,6 +82,11 @@ module Xlogin
       line
     end
 
+    def close
+      @gateway.close(@port) if @gateway
+      super
+    end
+
     def dup
       uri = URI::Generic.build(@scheme, [@username, @password].compact.join(':'), @host, @port)
       self.class.new(@template, uri, **opts.to_h)
@@ -109,14 +114,14 @@ module Xlogin
       case gateway_uri.scheme
       when 'ssh'
         username, password = *gateway_uri.userinfo.split(':')
-        gateway = Net::SSH::Gateway.new(
+        @gateway = Net::SSH::Gateway.new(
           gateway_uri.host,
           username,
           password: password,
           port: gateway_uri.port || 22
         )
 
-        @port = gateway.open(@host, @port)
+        @port = @gateway.open(@host, @port)
         @host = '127.0.0.1'
       end
     end

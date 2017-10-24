@@ -5,23 +5,24 @@ module Xlogin
 
     module RelayTemplate
       def build(uri, **params)
-        login_host = params.delete(:relay)
-        return super(uri, **params) unless login_host
+        target_host = params.delete(:relay)
+        return super(uri, **params) unless target_host
 
-        login_info = Xlogin.factory.get(login_host)
-        login_os   = Xlogin.factory.get_template(login_info[:type])
-        login_uri  = URI(login_info[:uri])
+        target_info = Xlogin.factory.get(target_host)
+        target_temp = Xlogin.factory.get_template(target_info[:type])
+        target_uri  = URI(target_info[:uri])
 
         login    = @methods.fetch(:login)
         delegate = @methods.fetch(:delegate)
+        raise TemplateError.new("'login' and 'delegate' methods are necessary in the #{target_info[:type]} template.") unless login && delegate
 
         relay_uri = URI(uri.to_s)
         userinfo_cache = relay_uri.userinfo.dup
         relay_uri.userinfo = ''
 
-        session = login_os.build(relay_uri, **params)
+        session = target_temp.build(relay_uri, **params)
         session.instance_exec(*userinfo_cache.split(':'), &login)
-        session.instance_exec(login_uri, **params, &delegate)
+        session.instance_exec(target_uri, **params, &delegate)
         session
       end
     end

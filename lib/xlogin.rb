@@ -9,8 +9,8 @@ module Xlogin
   DEFAULT_TEMPLATE_DIR   = File.join(ENV['HOME'], '.xlogin.d')
   BUILTIN_TEMPLATE_FILES = Dir.glob(File.join(File.dirname(__FILE__), 'xlogin', 'templates', '*.rb'))
 
-  class SessionNotFound    < StandardError; end
-  class TemplateNotFound   < StandardError; end
+  class SessionError       < StandardError; end
+  class TemplateError      < StandardError; end
   class AuthorizationError < StandardError; end
 
   class << self
