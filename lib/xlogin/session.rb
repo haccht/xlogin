@@ -83,7 +83,7 @@ module Xlogin
     end
 
     def close
-      @gateway.close(@port) if @gateway
+      @gateway.shutdown! if @gateway
       super
     end
 
