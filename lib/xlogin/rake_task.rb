@@ -8,14 +8,12 @@ module Xlogin
     class << self
       include Rake::DSL
 
-      def bulk(names, description = nil, &block)
+      def bulk(names, &block)
         current_namespace do |path|
-          description ||= Rake.application.last_description
-
           names = names.map(&:strip).grep(/^\s*[^#]/).uniq
           names.each do |name|
-            desc description || "Run '#{path}:#{name}'"
-            RakeTask.new(name, &block)
+            desc Rake.application.last_description
+            RakeTask.new(name, description, &block)
           end
         end
       end
@@ -38,9 +36,8 @@ module Xlogin
     attr_accessor :log
     attr_accessor :silent
 
-    def initialize(name, description = Rake.application.last_description)
+    def initialize(name)
       @name   = name
-      @desc   = description
       @runner = nil
       @silent ||= Rake.application.options.silent
 
@@ -55,7 +52,8 @@ module Xlogin
     private
     def define_task
       RakeTask.current_namespace do |path|
-        desc @desc || "Run '#{path}:#{name}'"
+        description = Rake.application.last_description
+        desc "#{description} - #{name}" if description
 
         if lock
           task(name => lock)
