@@ -11,8 +11,10 @@ module Xlogin
       def bulk(names, &block)
         current_namespace do |path|
           names = names.map(&:strip).grep(/^\s*[^#]/).uniq
+          description = Rake.application.last_description
+
           names.each do |name|
-            desc Rake.application.last_description
+            desc description
             RakeTask.new(name, &block)
           end
         end
