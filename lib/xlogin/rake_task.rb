@@ -9,29 +9,15 @@ module Xlogin
       include Rake::DSL
 
       def bulk(names, &block)
-        current_namespace do |path|
-          description = Rake.application.last_description
+        names = names.map(&:strip).grep(/^\s*[^#]/).uniq
+        description = Rake.application.last_description
 
-          names = names.map(&:strip).grep(/^\s*[^#]/).uniq
-          names.each do |name|
-            desc description || "Run '#{path}:#{name}'"
-            RakeTask.new(name, &block)
-          end
-        end
-      end
-
-      def current_namespace
-        Rake.application.current_scope.path.tap do |path|
-          if path.empty?
-            path = self.name.split('::').first.downcase
-            namespace(path) { yield(path) } if block_given?
-          else
-            yield(path) if block_given?
-          end
+        names.each do |name|
+          desc description
+          RakeTask.new(name, &block)
         end
       end
     end
-
 
     attr_reader   :name
     attr_accessor :lock
@@ -53,19 +39,19 @@ module Xlogin
 
     private
     def define_task
-      RakeTask.current_namespace do |path|
-        desc Rake.application.last_description || "Run '#{path}:#{name}'"
+      description = Rake.application.last_description
+      description = "#{description} - #{name}" if description
+      desc description
 
-        if lock
-          task(name => lock)
-          file(lock) do
-            invoke
-            mkdir_p(File.dirname(lock), verbose: Rake.application.options.trace)
-            touch(lock, verbose: Rake.application.options.trace)
-          end
-        else
-          task(name) { invoke }
+      if lock
+        task(name => lock)
+        file(lock) do
+          invoke
+          mkdir_p(File.dirname(lock), verbose: Rake.application.options.trace)
+          touch(lock, verbose: Rake.application.options.trace)
         end
+      else
+        task(name) { invoke }
       end
     end
 

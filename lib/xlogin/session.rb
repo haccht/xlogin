@@ -25,7 +25,7 @@ module Xlogin
       @username, @password = uri.userinfo.to_s.split(':')
       raise ArgumentError.new("Invalid URI - '#{uri}'") unless @host && @port
 
-      @output_logs    = opts.log
+      @output_logs    = [opts.log]
       @output_loggers = build_loggers
 
       ssh_tunnel(opts.via) if opts.via
@@ -88,6 +88,10 @@ module Xlogin
 
     def close
       @gateway.shutdown! if @gateway
+      @output_loggers.each do |output_log, logger|
+        next unless logger
+        logger.close if output_log.kind_of?(String)
+      end
       super
     end
 
@@ -131,25 +135,27 @@ module Xlogin
     end
 
     def output_log(text, &block)
-      [*@output_loggers, block].compact.each { |logger| logger.call(text) }
-    end
-
-    def build_loggers(output_logs = @output_logs)
-      [output_logs].flatten.compact.uniq.map do |output_log|
-        logger = case output_log
-                 when String
-                   FileUtils.mkdir_p(File.dirname(output_log))
-                   File.open(output_log, 'a+').tap do |file|
-                     file.binmode
-                     file.sync = true
-                   end
-                 when IO, StringIO
-                   output_log
-                 end
-
-        lambda { |c| logger.syswrite c if logger }
+      block.call(text) if block
+      @output_loggers.each do |_, logger|
+        next unless logger
+        logger.syswrite(text)
       end
     end
 
+    def build_loggers(output_logs = @output_logs)
+      [output_logs].flatten.uniq.each.with_object({}) do |output_log, loggers|
+        case output_log
+        when String
+          FileUtils.mkdir_p(File.dirname(output_log))
+          logger = File.open(output_log, 'a+')
+          logger.binmode
+          logger.sync = true
+
+          loggers[output_log] = logger
+        when IO, StringIO
+          loggers[output_log] = output_log
+        end
+      end
+    end
   end
 end

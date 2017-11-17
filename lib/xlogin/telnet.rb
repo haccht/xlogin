@@ -23,7 +23,7 @@ module Xlogin
 
     def interact!
       $stdin.raw!
-      disable_log($stdout)
+      enable_log($stdout)
 
       loop do
         rs, _ = IO.select([$stdin, @sock])
@@ -45,7 +45,6 @@ module Xlogin
           when @sock
             begin
               bs = fh.readpartial(1024)
-              $stdout.syswrite(bs)
               output_log(bs)
             rescue Errno::EAGAIN
               retry
