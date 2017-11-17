@@ -35,7 +35,7 @@ module Xlogin
       parser.on('-i PATH',      '--inventory',    String, 'The PATH to the inventory file (default: $HOME/.xloginrc).') { |v| config.inventory = v }
       parser.on('-t PATH',      '--template',     String, 'The PATH to the template file.')       { |v| config.templates << v }
       parser.on('-T DIRECTORY', '--template-dir', String, 'The DIRECTORY to the template files.') { |v| config.templates += Dir.glob(File.join(v, '*.rb')) }
-      parser.on('-l [DIRECTORY]', '--log',        String, 'The DIRECTORY to the output log file (default: $PWD/log).') { |v| config.logdir = v || Dir.pwd }
+      parser.on('-l [DIRECTORY]', '--log',        String, 'The DIRECTORY to the output log file (default: $PWD/log).') { |v| config.logdir = v || ENV['PWD'] }
 
       parser.on('-p NUM', '--parallels',  Integer,   'The NUM of the threads. (default: 5).') { |v| config.parallels  = v }
       parser.on('-e',     '--enable',     TrueClass, 'Try to gain enable priviledge.')        { |v| config.enable = v }
@@ -121,12 +121,12 @@ module Xlogin
           block.call(session)
         rescue => e
           lines = (config.parallels > 1)? "\n#{hostname}\t| [Error] #{e}" : "\n[Error] #{e}"
-          lines.each { |line| $stderr.print "#{line.chomp}\n" }
+          lines.each_line { |line| $stderr.print "#{line.chomp}\n" }
         end
 
         if config.parallels > 1
           lines = buffer.string.lines.map { |line| "#{hostname}\t| " + line.gsub("\r", '') }
-          lines.each { |line| $stderr.print "#{line.chomp}\n" }
+          lines.each_line { |line| $stderr.print "#{line.chomp}\n" }
         end
       end
     end

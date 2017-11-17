@@ -16,8 +16,8 @@ module Xlogin
       super(params)
 
       if username || password
-        return login(username, password) if respond_to?(:login)
-        telnet_login(username, password)
+        return login(*[username, password].compact) if respond_to?(:login)
+        telnet_login(*[username, password].compact)
       end
     end
 
@@ -46,7 +46,7 @@ module Xlogin
             begin
               bs = fh.readpartial(1024)
               $stdout.syswrite(bs)
-              output(bs)
+              output_log(bs)
             rescue Errno::EAGAIN
               retry
             end
