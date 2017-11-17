@@ -9,6 +9,7 @@ module Xlogin
     DEFAULT_PROMPT   = /[$%#>] ?\z/n
     RESERVED_METHODS = %i( login logout enable delegate )
 
+    attr_reader :name
     attr_reader :methods
 
     def initialize(name)
