@@ -7,11 +7,12 @@ module Xlogin
 
     DEFAULT_TIMEOUT  = 10
     DEFAULT_PROMPT   = /[$%#>] ?\z/n
-    BINDABLE_METHODS = %i( login logout enable delegate )
+    RESERVED_METHODS = %i( login logout enable delegate )
 
     attr_reader :methods
 
-    def initialize
+    def initialize(name)
+      @name    = name
       @timeout = DEFAULT_TIMEOUT
       @prompts = Array.new
       @methods = Hash.new
@@ -45,7 +46,7 @@ module Xlogin
     end
 
     def method_missing(name, *, &block)
-      super unless BINDABLE_METHODS.include? name
+      super unless RESERVED_METHODS.include? name
       bind(name) { |*args| instance_exec(*args, &block) }
     end
   end

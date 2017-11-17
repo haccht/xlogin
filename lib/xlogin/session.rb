@@ -23,10 +23,10 @@ module Xlogin
                 end
 
       @username, @password = uri.userinfo.to_s.split(':')
-      raise ArgumentError.new('Device hostname or port not specified.') unless @host && @port
+      raise ArgumentError.new("Invalid URI - '#{uri}'") unless @host && @port
 
-      @output_logs = opts.log
-      @output_loggers = prebuild_loggers
+      @output_logs    = opts.log
+      @output_loggers = build_loggers
 
       ssh_tunnel(opts.via) if opts.via
       max_retry = opts.retry || 1
@@ -46,6 +46,10 @@ module Xlogin
       end
     end
 
+    def type
+      @template.name
+    end
+
     def prompt
       cmd('').lines.last.chomp
     end
@@ -63,14 +67,14 @@ module Xlogin
     end
 
     def respond_to_missing?(name, _)
-      @template.methods[name]
+      !!@template.methods[name]
     end
 
     def waitfor(*expect, &block)
       return waitfor(Regexp.union(*@template.prompt.map(&:first)), &block) if expect.empty?
 
       line = super(*expect) do |recvdata|
-        output(recvdata, &block)
+        output_log(recvdata, &block)
       end
 
       _, process = @template.prompt.find { |r, p| r =~ line && p }
@@ -89,22 +93,22 @@ module Xlogin
 
     def dup
       uri = URI::Generic.build(@scheme, [@username, @password].compact.join(':'), @host, @port)
-      self.class.new(@template, uri, **opts.to_h)
+      @template.build(uri, **opts.to_h)
     end
 
     def enable_log(out = $stdout)
-      @output_loggers = prebuild_loggers(@output_logs + [out])
+      @output_loggers = build_loggers(@output_logs + [out])
       if block_given?
         yield
-        @output_loggers = prebuild_loggers
+        @output_loggers = build_loggers
       end
     end
 
     def disable_log(out = $stdout)
-      @output_loggers = prebuild_loggers(@output_logs - [out])
+      @output_loggers = build_loggers(@output_logs - [out])
       if block_given?
         yield
-        @output_loggers = prebuild_loggers
+        @output_loggers = build_loggers
       end
     end
 
@@ -126,11 +130,11 @@ module Xlogin
       end
     end
 
-    def output(text, &block)
+    def output_log(text, &block)
       [*@output_loggers, block].compact.each { |logger| logger.call(text) }
     end
 
-    def prebuild_loggers(output_logs = @output_logs)
+    def build_loggers(output_logs = @output_logs)
       [output_logs].flatten.compact.uniq.map do |output_log|
         logger = case output_log
                  when String

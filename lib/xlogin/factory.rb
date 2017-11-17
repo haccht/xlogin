@@ -51,7 +51,7 @@ module Xlogin
     end
 
     def get_template(name)
-      @templates[name.to_s.downcase] ||= Xlogin::Template.new
+      @templates[name.to_s.downcase] ||= Xlogin::Template.new(name)
     end
 
     def list_templates

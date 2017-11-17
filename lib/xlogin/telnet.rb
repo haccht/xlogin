@@ -16,8 +16,8 @@ module Xlogin
       super(params)
 
       if username || password
-        return login(username, password) if respond_to?(:login)
-        telnet_login(username, password)
+        return login(*[username, password].compact) if respond_to?(:login)
+        telnet_login(*[username, password].compact)
       end
     end
 

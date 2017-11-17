@@ -4,7 +4,7 @@ require 'xlogin/session'
 module Xlogin
   class Ssh < Net::SSH::Telnet
 
-    include SessionModule
+    prepend SessionModule
 
     def interact!
       raise 'Not implemented'
