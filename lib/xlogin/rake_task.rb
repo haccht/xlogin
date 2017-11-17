@@ -13,7 +13,7 @@ module Xlogin
           names = names.map(&:strip).grep(/^\s*[^#]/).uniq
           names.each do |name|
             desc Rake.application.last_description
-            RakeTask.new(name, description, &block)
+            RakeTask.new(name, &block)
           end
         end
       end
