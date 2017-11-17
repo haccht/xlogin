@@ -53,7 +53,8 @@ module Xlogin
     def define_task
       RakeTask.current_namespace do |path|
         description = Rake.application.last_description
-        desc "#{description} - #{name}" if description
+        description = "#{description} - #{name}" if description
+        desc description
 
         if lock
           task(name => lock)
