@@ -25,7 +25,7 @@ module Xlogin
       @username, @password = uri.userinfo.to_s.split(':')
       raise ArgumentError.new("Invalid URI - '#{uri}'") unless @host && @port
 
-      @output_logs    = opts.log
+      @output_logs    = [opts.log]
       @output_loggers = build_loggers
 
       ssh_tunnel(opts.via) if opts.via
