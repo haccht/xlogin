@@ -46,7 +46,7 @@ module Xlogin
             begin
               bs = fh.readpartial(1024)
               $stdout.syswrite(bs)
-              output(bs)
+              output_log(bs)
             rescue Errno::EAGAIN
               retry
             end
