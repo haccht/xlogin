@@ -70,6 +70,7 @@ module Xlogin
         begin
           session = Xlogin.factory.build_from_hostname(name, log: loggers)
           @runner.call(session)
+          session.close if session
           lines = buffer.string.lines.map { |line| "#{name}\t" + line.gsub("\r", '') }
           lines.each { |line| $stdout.print line.chomp + "\n" }
         rescue => e
@@ -83,6 +84,7 @@ module Xlogin
         begin
           session = Xlogin.factory.build_from_hostname(name, log: loggers)
           @runner.call(session)
+          session.close if session
         rescue => e
           $stderr.puts e
         end
