@@ -55,8 +55,7 @@ module Xlogin
     end
 
     def exec(*args)
-      resp = cmd(*args)
-      yield resp if block_given?
+      cmd(*args).tap { |resp| yield resp if block_given? }
     end
 
     def puts(line, &block)

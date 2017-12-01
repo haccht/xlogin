@@ -56,38 +56,27 @@ module Xlogin
     end
 
     def invoke
+      buffer  = StringIO.new
       loggers = []
+      loggers << buffer  if Rake.application.options.always_multitask
+      loggers << $stdout unless Rake.application.options.always_multitask || silent
 
       if log
         mkdir_p(File.dirname(log), verbose: Rake.application.options.trace)
         loggers << log
       end
 
-      if Rake.application.options.always_multitask
-        buffer = StringIO.new
-        loggers << buffer  unless silent
+      begin
+        session = Xlogin.factory.build_from_hostname(name, log: loggers)
+        @runner.call(session)
+        session.close if session
+      rescue => e
+        $stderr.print "#{name}\t#{e}\n"
+      end
 
-        begin
-          session = Xlogin.factory.build_from_hostname(name, log: loggers)
-          @runner.call(session)
-          session.close if session
-          lines = buffer.string.lines.map { |line| "#{name}\t" + line.gsub("\r", '') }
-          lines.each { |line| $stdout.print line.chomp + "\n" }
-        rescue => e
-          lines = buffer.string.lines.map { |line| "#{name}\t" + line.gsub("\r", '') }
-          lines.each { |line| $stdout.print line.chomp + "\n" }
-          $stderr.print "#{name}\t#{e}\n"
-        end
-      else
-        loggers << $stdout unless silent
-
-        begin
-          session = Xlogin.factory.build_from_hostname(name, log: loggers)
-          @runner.call(session)
-          session.close if session
-        rescue => e
-          $stderr.print "#{e}\n"
-        end
+      if Rake.application.options.always_multitask && not silent
+        lines = buffer.string.lines.map { |line| "#{name}\t" + line.gsub("\r", '') }
+        lines.each { |line| $stdout.print "#{line.chomp}\n" }
       end
     end
 
