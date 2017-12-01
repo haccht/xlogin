@@ -54,9 +54,14 @@ module Xlogin
       cmd('').lines.last.chomp
     end
 
-    def puts(line)
+    def exec(*args)
+      resp = cmd(*args)
+      yield resp if block_given?
+    end
+
+    def puts(line, &block)
       line = instance_exec(line, &@template.interrupt) if @template.interrupt
-      super(line)
+      super(line, &block)
     end
 
     def method_missing(name, *args, &block)

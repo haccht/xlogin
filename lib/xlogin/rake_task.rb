@@ -76,7 +76,7 @@ module Xlogin
         rescue => e
           lines = buffer.string.lines.map { |line| "#{name}\t" + line.gsub("\r", '') }
           lines.each { |line| $stdout.print line.chomp + "\n" }
-          $stderr.puts "#{name}\t#{e}"
+          $stderr.print "#{name}\t#{e}\n"
         end
       else
         loggers << $stdout unless silent
@@ -86,7 +86,7 @@ module Xlogin
           @runner.call(session)
           session.close if session
         rescue => e
-          $stderr.puts e
+          $stderr.print "#{e}\n"
         end
       end
     end
