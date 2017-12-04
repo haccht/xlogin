@@ -74,7 +74,7 @@ module Xlogin
         $stderr.print "#{name}\t#{e}\n"
       end
 
-      if Rake.application.options.always_multitask && not silent
+      if Rake.application.options.always_multitask && !silent
         lines = buffer.string.lines.map { |line| "#{name}\t" + line.gsub("\r", '') }
         lines.each { |line| $stdout.print "#{line.chomp}\n" }
       end
