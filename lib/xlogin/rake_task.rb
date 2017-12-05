@@ -23,6 +23,7 @@ module Xlogin
     attr_accessor :lock
     attr_accessor :log
     attr_accessor :silent
+    attr_accessor :timeout
 
     def initialize(name)
       @name   = name
@@ -67,7 +68,7 @@ module Xlogin
       end
 
       begin
-        session = Xlogin.factory.build_from_hostname(name, log: loggers)
+        session = Xlogin.factory.build_from_hostname(name, log: loggers, timeout: timeout)
         @runner.call(session)
         session.close if session
       rescue => e

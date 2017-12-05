@@ -90,12 +90,13 @@ module Xlogin
       line
     end
 
-    def close
+    def close(*args)
       @gateway.shutdown! if @gateway
       @output_loggers.each do |output_log, logger|
         next unless logger
         logger.close if output_log.kind_of?(String)
       end
+      logout(*args) if respond_to?(:logout)
       super
     end
 
