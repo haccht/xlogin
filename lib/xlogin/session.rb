@@ -37,7 +37,7 @@ module Xlogin
           'Port'     => @port,
           'Username' => @username,
           'Password' => @password,
-          'Timeout'  => @template.timeout,
+          'Timeout'  => @opts.timeout || @template.timeout,
           'Prompt'   => Regexp.union(*@template.prompt.map(&:first)),
         )
       rescue => e
@@ -63,17 +63,6 @@ module Xlogin
       super(line, &block)
     end
 
-    def method_missing(name, *args, &block)
-      process = @template.methods[name]
-      super unless process
-
-      instance_exec(*args, &process)
-    end
-
-    def respond_to_missing?(name, _)
-      !!@template.methods[name]
-    end
-
     def waitfor(*expect, &block)
       return waitfor(Regexp.union(*@template.prompt.map(&:first)), &block) if expect.empty?
 
@@ -90,12 +79,13 @@ module Xlogin
       line
     end
 
-    def close
+    def close(*args)
       @gateway.shutdown! if @gateway
       @output_loggers.each do |output_log, logger|
         next unless logger
         logger.close if output_log.kind_of?(String)
       end
+      logout(*args) if respond_to?(:logout)
       super
     end
 
