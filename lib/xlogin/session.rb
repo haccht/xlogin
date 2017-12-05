@@ -37,7 +37,7 @@ module Xlogin
           'Port'     => @port,
           'Username' => @username,
           'Password' => @password,
-          'Timeout'  => @template.timeout,
+          'Timeout'  => @opts.timeout || @template.timeout,
           'Prompt'   => Regexp.union(*@template.prompt.map(&:first)),
         )
       rescue => e
