@@ -63,17 +63,6 @@ module Xlogin
       super(line, &block)
     end
 
-    def method_missing(name, *args, &block)
-      process = @template.methods[name]
-      super unless process
-
-      instance_exec(*args, &process)
-    end
-
-    def respond_to_missing?(name, _)
-      !!@template.methods[name]
-    end
-
     def waitfor(*expect, &block)
       return waitfor(Regexp.union(*@template.prompt.map(&:first)), &block) if expect.empty?
 
