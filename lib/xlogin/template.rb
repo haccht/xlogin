@@ -43,7 +43,7 @@ module Xlogin
     def build(uri, **params)
       uri   = URI(uri.to_s)
       klass = Class.new(Xlogin.const_get(uri.scheme.capitalize))
-      klass.class_eval(@methods) do |methods|
+      klass.class_exec(@methods) do |methods|
         methods.each { |name, block| define_method(name, &block) }
       end
 

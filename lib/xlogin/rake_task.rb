@@ -24,11 +24,13 @@ module Xlogin
     attr_accessor :log
     attr_accessor :silent
     attr_accessor :timeout
+    attr_accessor :fail_on_error
 
     def initialize(name)
       @name   = name
       @runner = nil
       @silent ||= Rake.application.options.silent
+      @fail_on_error = true
 
       yield(self) if block_given?
       define_task
@@ -73,6 +75,7 @@ module Xlogin
         session.close if session
       rescue => e
         $stderr.print "#{name}\t#{e}\n"
+        raise e if fail_on_error
       end
 
       if Rake.application.options.always_multitask && !silent
