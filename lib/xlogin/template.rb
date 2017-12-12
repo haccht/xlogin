@@ -7,7 +7,7 @@ module Xlogin
 
     DEFAULT_TIMEOUT  = 10
     DEFAULT_PROMPT   = /[$%#>] ?\z/n
-    RESERVED_METHODS = %i( login logout enable delegate )
+    RESERVED_METHODS = %i( login logout enable disable delegate )
 
     attr_reader :name
     attr_reader :methods
@@ -43,8 +43,15 @@ module Xlogin
     def build(uri, **params)
       uri   = URI(uri.to_s)
       klass = Class.new(Xlogin.const_get(uri.scheme.capitalize))
-      klass.class_eval(@methods) do |methods|
-        methods.each { |name, block| define_method(name, &block) }
+      klass.class_exec(@methods) do |methods|
+        methods.each do |name, block|
+          case name
+          when :enable
+            define_method(name) { |pass = nil| instance_exec(pass || params[:enable], &block) }
+          else
+            define_method(name, &block)
+          end
+        end
       end
 
       klass.new(self, uri, **params)

@@ -54,13 +54,18 @@ module Xlogin
       cmd('').lines.last.chomp
     end
 
+    def puts(line, &block)
+      line = instance_exec(line, &@template.interrupt) if @template.interrupt
+      super(line, &block)
+    end
+
     def exec(*args)
       cmd(*args).tap { |resp| yield resp if block_given? }
     end
 
-    def puts(line, &block)
-      line = instance_exec(line, &@template.interrupt) if @template.interrupt
-      super(line, &block)
+    def enable(*args)
+      args.push(opts.enable) if args.empty?
+      super(args)
     end
 
     def waitfor(*expect, &block)
