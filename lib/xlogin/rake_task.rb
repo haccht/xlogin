@@ -74,7 +74,7 @@ module Xlogin
         @runner.call(session)
         session.close if session
       rescue => e
-        $stderr.print "#{name}\t#{e}\n"
+        $stderr.print "[ERROR] #{name} - #{e}\n"
         raise e if fail_on_error
       end
 
