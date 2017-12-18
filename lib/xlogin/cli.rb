@@ -50,13 +50,13 @@ module Xlogin
         end
       end
 
+      args = parser.parse(args)
       Xlogin.configure do
         template(*config.templates)
         source(config.inventory)
         authorize(config.assume_yes)
       end
 
-      args = parser.parse(args)
       config.hostlist += args.flat_map do |target|
         hostlist = Xlogin.factory.list(target)
         hostlist.tap { |e| raise "Invalid inventory - #{target}" if e.empty? }
