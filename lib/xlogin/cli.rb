@@ -21,7 +21,7 @@ module Xlogin
       config = OpenStruct.new(
         task: 'tty',
         hostlist:  [],
-        parallels: 5,
+        parallels: 1,
         inventory: nil,
         templates: [],
       )
@@ -50,13 +50,13 @@ module Xlogin
         end
       end
 
+      args = parser.parse(args)
       Xlogin.configure do
         template(*config.templates)
         source(config.inventory)
         authorize(config.assume_yes)
       end
 
-      args = parser.parse(args)
       config.hostlist += args.flat_map do |target|
         hostlist = Xlogin.factory.list(target)
         hostlist.tap { |e| raise "Invalid inventory - #{target}" if e.empty? }
@@ -116,17 +116,17 @@ module Xlogin
           loggers << File.join(config.logdir, "#{hostname}.log") if config.logdir
 
           session = Xlogin.factory.build(hostinfo.merge(log: loggers))
-          session.enable(session.opts.enable) if config.enable && session.respond_to?(:enable)
+          session.enable if session.config.enable
 
           block.call(session)
-        rescue => e
-          lines = (config.parallels > 1)? "\n#{hostname}\t| [Error] #{e}" : "\n[Error] #{e}"
-          lines.each_line { |line| $stderr.print "#{line.chomp}\n" }
+        #rescue => e
+        #  lines = (config.parallels > 1)? ["\n#{hostname}\t| [Error] #{e}"] : ["\n[Error] #{e}"]
+        #  lines.each { |line| $stderr.print "#{line.chomp}\n" }
         end
 
         if config.parallels > 1
           lines = buffer.string.lines.map { |line| "#{hostname}\t| " + line.gsub("\r", '') }
-          lines.each_line { |line| $stderr.print "#{line.chomp}\n" }
+          lines.each { |line| $stdout.print "#{line.chomp}\n" }
         end
       end
     end

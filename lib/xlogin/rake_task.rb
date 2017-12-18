@@ -3,6 +3,7 @@ require 'rake/tasklib'
 require 'stringio'
 
 module Xlogin
+
   class RakeTask < Rake::TaskLib
 
     class << self
@@ -71,6 +72,7 @@ module Xlogin
 
       begin
         session = Xlogin.factory.build_from_hostname(name, log: loggers, timeout: timeout)
+        session.enable if session.config.enable
         @runner.call(session)
         session.close if session
       rescue => e
@@ -85,4 +87,5 @@ module Xlogin
     end
 
   end
+
 end
