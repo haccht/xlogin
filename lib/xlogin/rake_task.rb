@@ -3,6 +3,7 @@ require 'rake/tasklib'
 require 'stringio'
 
 module Xlogin
+
   class RakeTask < Rake::TaskLib
 
     class << self
@@ -85,4 +86,12 @@ module Xlogin
     end
 
   end
+
+  # monkey patch to SessionModule#cmd method
+  module SessionModule
+    def cmd(*args)
+      super(*args) { |resp| yield resp if block_given? }
+    end
+  end
+
 end

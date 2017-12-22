@@ -37,7 +37,7 @@ module Xlogin
           'Port'     => @port,
           'Username' => @username,
           'Password' => @password,
-          'Timeout'  => @opts.timeout || @template.timeout,
+          'Timeout'  => @opts.timeout || @template.timeout || false,
           'Prompt'   => Regexp.union(*@template.prompt.map(&:first)),
         )
       rescue => e
@@ -57,10 +57,6 @@ module Xlogin
     def puts(line, &block)
       line = instance_exec(line, &@template.interrupt) if @template.interrupt
       super(line, &block)
-    end
-
-    def exec(*args)
-      cmd(*args).tap { |resp| yield resp if block_given? }
     end
 
     def enable(*args)
