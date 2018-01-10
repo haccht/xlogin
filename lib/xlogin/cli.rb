@@ -120,13 +120,13 @@ module Xlogin
 
           block.call(session)
         rescue => e
-          lines = (config.parallels > 1)? "\n#{hostname}\t| [Error] #{e}" : "\n[Error] #{e}"
-          lines.each_line { |line| $stderr.print "#{line.chomp}\n" }
+          lines = (config.parallels > 1)? ["\n#{hostname}\t| [Error] #{e}"] : ["\n[Error] #{e}"]
+          lines.each { |line| $stderr.print "#{line.chomp}\n" }
         end
 
         if config.parallels > 1
           lines = buffer.string.lines.map { |line| "#{hostname}\t| " + line.gsub("\r", '') }
-          lines.each_line { |line| $stderr.print "#{line.chomp}\n" }
+          lines.each { |line| $stderr.print "#{line.chomp}\n" }
         end
       end
     end

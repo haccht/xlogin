@@ -87,11 +87,4 @@ module Xlogin
 
   end
 
-  # monkey patch to SessionModule#cmd method
-  module SessionModule
-    def cmd(*args)
-      super(*args) { |resp| yield resp if block_given? }
-    end
-  end
-
 end

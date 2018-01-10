@@ -76,7 +76,7 @@ module Xlogin
       hostinfo = get(hostname)
       raise Xlogin::SessionError.new("Host not found: '#{hostname}'") unless hostinfo
 
-      build(hostinfo.merge(**params))
+      build(hostinfo.merge(**params)).tap { |s| s.name = hostname }
     end
 
     def method_missing(method_name, *args, &block)
