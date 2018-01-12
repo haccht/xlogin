@@ -21,7 +21,7 @@ module Xlogin
       config = OpenStruct.new(
         task: 'tty',
         hostlist:  [],
-        parallels: 5,
+        parallels: 1,
         inventory: nil,
         templates: [],
       )
@@ -117,6 +117,7 @@ module Xlogin
 
           session = Xlogin.factory.build(hostinfo.merge(log: loggers))
           session.enable(session.opts.enable) if config.enable && session.respond_to?(:enable)
+          session.cmd('')
 
           block.call(session)
         rescue => e
@@ -126,7 +127,7 @@ module Xlogin
 
         if config.parallels > 1
           lines = buffer.string.lines.map { |line| "#{hostname}\t| " + line.gsub("\r", '') }
-          lines.each { |line| $stderr.print "#{line.chomp}\n" }
+          lines.each { |line| $stdout.print "#{line.chomp}\n" }
         end
       end
     end

@@ -14,7 +14,7 @@ module Xlogin
 
         login    = @methods.fetch(:login)
         delegate = @methods.fetch(:delegate)
-        raise TemplateError.new("'login' and 'delegate' methods are necessary in the #{target_info[:type]} template.") unless login && delegate
+        raise TemplateError.new("'login' and 'delegate' must be defined in the #{target_info[:type]} template.") unless login && delegate
 
         relay_uri = URI(uri.to_s)
         userinfo_cache = relay_uri.userinfo.dup
@@ -44,7 +44,7 @@ module Xlogin
     # end
     #
     # delegate do |uri, **opts|
-    #   cmd("telnet #{uri.host}")
+    #   puts("telnet #{uri.host}")
     #   login(*uri.userinfo.split(':'))
     # end
 
