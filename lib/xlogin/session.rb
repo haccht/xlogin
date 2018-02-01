@@ -1,3 +1,4 @@
+require 'delegate'
 require 'fileutils'
 require 'net/ssh/gateway'
 require 'ostruct'
@@ -12,13 +13,13 @@ module Xlogin
 
     def initialize(template, uri, **params)
       @template = template
-      @scheme   = uri.scheme
       @config   = OpenStruct.new(params)
 
+      @uri  = uri
       @host = uri.host
       @name = uri.host
       @port = uri.port
-      @port ||= case @scheme
+      @port ||= case @uri.scheme
                 when 'ssh'    then 22
                 when 'telnet' then 23
                 end
@@ -86,14 +87,6 @@ module Xlogin
       @closed = true
     end
 
-    def aging_time(time = config.timeout)
-      @ageout = Time.now + time
-      Thread.start do
-        sleep(time)
-        close if Time.now > @ageout
-      end
-    end
-
     def close
       @gateway.shutdown! if @gateway
       @output_loggers.each do |output_log, logger|
@@ -108,9 +101,8 @@ module Xlogin
       @closed
     end
 
-    def dup
-      uri = URI::Generic.build(@scheme, [@username, @password].compact.join(':'), @host, @port)
-      @template.build(uri, **config.to_h)
+    def duplicate
+      @template.build(@uri, **config.to_h)
     end
 
     def enable_log(out = $stdout)
@@ -169,6 +161,29 @@ module Xlogin
           loggers[output_log] = output_log
         end
       end
+    end
+  end
+
+  class Session
+    def initialize(template, uri, **params)
+      @session = template.build(uri, **params)
+      @ageout  = nil
+    end
+
+    def aging_time(time = config.timeout)
+      @ageout = Time.now + time
+      Thread.start do
+        sleep(time)
+        @session.close if Time.now > @ageout
+      end
+    end
+
+    def repair
+      @session = @session.duplicate
+    end
+
+    def method_missing(name, *args, &block)
+      @session.send(name, *args, &block)
     end
   end
 end
