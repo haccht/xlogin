@@ -116,13 +116,12 @@ module Xlogin
           loggers << File.join(config.logdir, "#{hostname}.log") if config.logdir
 
           session = Xlogin.factory.build(hostinfo.merge(log: loggers))
-          session.enable(session.opts.enable) if config.enable && session.respond_to?(:enable)
-          session.cmd('')
+          session.enable if session.config.enable
 
           block.call(session)
-        rescue => e
-          lines = (config.parallels > 1)? ["\n#{hostname}\t| [Error] #{e}"] : ["\n[Error] #{e}"]
-          lines.each { |line| $stderr.print "#{line.chomp}\n" }
+        #rescue => e
+        #  lines = (config.parallels > 1)? ["\n#{hostname}\t| [Error] #{e}"] : ["\n[Error] #{e}"]
+        #  lines.each { |line| $stderr.print "#{line.chomp}\n" }
         end
 
         if config.parallels > 1

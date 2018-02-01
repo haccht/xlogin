@@ -47,7 +47,7 @@ module Xlogin
         methods.each do |name, block|
           case name
           when :enable
-            define_method(name) { |pass = nil| instance_exec(pass || params[:enable], &block) }
+            define_method(name) { |password = params[:enable]| instance_exec(password, &block) }
           else
             define_method(name, &block)
           end

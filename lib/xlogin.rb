@@ -19,11 +19,20 @@ module Xlogin
       @factory ||= Xlogin::Factory.instance
     end
 
-    def get(hostname, args = {})
-      session = factory.build_from_hostname(hostname, args)
+    def get(args, **opts)
+      session = case args
+                when Hash
+                  factory.build(**args.merge(**opts))
+                when String
+                  factory.build_from_hostname(args, **opts)
+                end
 
       if block_given?
-        begin yield session ensure session.close end
+        begin
+          yield session
+        ensure
+          session.close
+        end
       else
         session
       end
