@@ -19,27 +19,30 @@ module Xlogin
       @factory ||= Xlogin::Factory.instance
     end
 
-    def get(args, **opts)
+    def get(args, **opts, &block)
       session = case args
-                when Hash
-                  factory.build(**args.merge(**opts))
-                when String
-                  factory.build_from_hostname(args, **opts)
+                when Hash   then factory.build(**args.merge(**opts))
+                when String then factory.build_from_hostname(args, **opts)
                 end
 
-      if block_given?
-        begin
-          yield session
-        ensure
-          session.close
-        end
-      else
-        session
-      end
+      return session unless block
+      begin block.call(session) ensure session.close end
+    end
+
+    def get_pool(args, **opts, &block)
+      pool = SessionPool.new(args, **opts)
+
+      return pool unless block
+      block.call(pool)
     end
 
     def configure(&block)
-      instance_eval(&block)
+      if block
+        instance_eval(&block)
+      else
+        source
+        template_dir
+      end
     end
 
     def authorized?
@@ -51,7 +54,7 @@ module Xlogin
       @authorized = boolean == true || (block && block.call == true)
     end
 
-    def source(source_file)
+    def source(source_file = nil)
       factory.source(source_file || DEFAULT_INVENTORY_FILE)
     end
 

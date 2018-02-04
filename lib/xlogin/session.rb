@@ -1,3 +1,4 @@
+require 'connection_pool'
 require 'delegate'
 require 'fileutils'
 require 'net/ssh/gateway'
@@ -11,9 +12,9 @@ module Xlogin
     attr_accessor :name
     attr_accessor :config
 
-    def initialize(template, uri, **params)
+    def initialize(template, uri, **opts)
       @template = template
-      @config   = OpenStruct.new(params)
+      @config   = OpenStruct.new(opts)
 
       @uri  = uri
       @host = uri.host
@@ -88,13 +89,15 @@ module Xlogin
     end
 
     def close
-      @gateway.shutdown! if @gateway
-      @output_loggers.each do |output_log, logger|
-        next unless logger
-        logger.close if output_log.kind_of?(String)
+      @mutex.synchronize do
+        @output_loggers.each do |output_log, logger|
+          next unless logger
+          logger.close if output_log.kind_of?(String)
+        end
+        @gateway.shutdown! if @gateway
+        super
+        @closed = true
       end
-      super
-      @closed = true
     end
 
     def closed?
@@ -164,26 +167,48 @@ module Xlogin
     end
   end
 
-  class Session
-    def initialize(template, uri, **params)
-      @session = template.build(uri, **params)
-      @ageout  = nil
+  class SessionPool
+
+    def initialize(args, **opts)
+      temp = case args
+             when String then opts.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
+             when Hash   then args.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
+             end
+
+      @pool = ConnectionPool.new(**temp) { Wrapper.new(args, **opts) }
     end
 
-    def aging_time(time = config.timeout)
-      @ageout = Time.now + time
-      Thread.start do
-        sleep(time)
-        @session.close if Time.now > @ageout
+    def with(**opts)
+      @pool.with(**opts) do |session|
+        session.repair if session.closed?
+        session.aging_time(opts[:aging]) if opts[:aging]
+
+        yield session
       end
     end
 
-    def repair
-      @session = @session.duplicate
+    class Wrapper
+      def initialize(*args)
+        @session = Xlogin.get(*args)
+        @agetime = nil
+      end
+
+      def repair
+        @session = @session.duplicate
+      end
+
+      def aging_time(time = @session.config.timeout)
+        @agetime = Time.now + time
+        Thread.start do
+          sleep(time)
+          @session.close if Time.now > @agetime
+        end
+      end
+
+      def method_missing(name, *args, &block)
+        @session.send(name, *args, &block)
+      end
     end
 
-    def method_missing(name, *args, &block)
-      @session.send(name, *args, &block)
-    end
   end
 end

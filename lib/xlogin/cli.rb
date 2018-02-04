@@ -119,9 +119,9 @@ module Xlogin
           session.enable if session.config.enable
 
           block.call(session)
-        #rescue => e
-        #  lines = (config.parallels > 1)? ["\n#{hostname}\t| [Error] #{e}"] : ["\n[Error] #{e}"]
-        #  lines.each { |line| $stderr.print "#{line.chomp}\n" }
+        rescue => e
+          lines = (config.parallels > 1)? ["\n#{hostname}\t| [Error] #{e}"] : ["\n[Error] #{e}"]
+          lines.each { |line| $stderr.print "#{line.chomp}\n" }
         end
 
         if config.parallels > 1
