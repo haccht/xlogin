@@ -19,9 +19,9 @@ module Xlogin
       end
     end
 
-    def set(**params)
-      name = params[:name]
-      @database[name] = params if name
+    def set(**opts)
+      name = opts[:name]
+      @database[name] = opts if name
     end
 
     def get(name)
@@ -65,18 +65,18 @@ module Xlogin
       @group = current_group
     end
 
-    def build(type:, uri:, **params)
+    def build(type:, uri:, **opts)
       template = get_template(type)
       raise Xlogin::TemplateError.new("Template not found: '#{type}'") unless template
 
-      template.build(uri, **params)
+      template.build(uri, **opts)
     end
 
-    def build_from_hostname(hostname, **params)
+    def build_from_hostname(hostname, **opts)
       hostinfo = get(hostname)
       raise Xlogin::SessionError.new("Host not found: '#{hostname}'") unless hostinfo
 
-      build(hostinfo.merge(**params)).tap { |s| s.name = hostname }
+      build(hostinfo.merge(**opts)).tap { |s| s.name = hostname }
     end
 
     def method_missing(method_name, *args, &block)

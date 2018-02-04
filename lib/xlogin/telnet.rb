@@ -10,10 +10,10 @@ module Xlogin
     alias_method :telnet_login, :login
     undef_method :login
 
-    def initialize(params)
-      username = params.delete('Username')
-      password = params.delete('Password')
-      super(params)
+    def initialize(args)
+      username = args.delete('Username')
+      password = args.delete('Password')
+      super(args)
 
       if username || password
         return login(*[username, password].compact) if respond_to?(:login)

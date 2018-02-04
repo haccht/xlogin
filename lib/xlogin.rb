@@ -21,25 +21,28 @@ module Xlogin
 
     def get(args, **opts)
       session = case args
-                when Hash
-                  factory.build(**args.merge(**opts))
-                when String
-                  factory.build_from_hostname(args, **opts)
+                when Hash   then factory.build(**args.merge(**opts))
+                when String then factory.build_from_hostname(args, **opts)
                 end
 
       if block_given?
-        begin
-          yield session
-        ensure
-          session.close
-        end
+        begin yield session ensure session.close end
       else
         session
       end
     end
 
+    def get_pool(args, **opts)
+      Xlogin::SessionPool.new(args, **opts)
+    end
+
     def configure(&block)
-      instance_eval(&block)
+      if block
+        instance_eval(&block)
+      else
+        source
+        template_dir
+      end
     end
 
     def authorized?

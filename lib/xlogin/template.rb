@@ -40,21 +40,21 @@ module Xlogin
       @interrupt = block
     end
 
-    def build(uri, **params)
+    def build(uri, **opts)
       uri   = URI(uri.to_s)
       klass = Class.new(Xlogin.const_get(uri.scheme.capitalize))
       klass.class_exec(@methods) do |methods|
         methods.each do |name, block|
           case name
           when :enable
-            define_method(name) { |password = params[:enable]| instance_exec(password, &block) }
+            define_method(name) { |password = opts[:enable]| instance_exec(password, &block) }
           else
             define_method(name, &block)
           end
         end
       end
 
-      klass.new(self, uri, **params)
+      klass.new(self, uri, **opts)
     end
 
     def method_missing(name, *, &block)
