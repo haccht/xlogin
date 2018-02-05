@@ -30,7 +30,7 @@ module Xlogin
     end
 
     def get_pool(args, **opts, &block)
-      pool = factory.set_template(args, **opts)
+      pool = ConnectionPool.new(args, **opts)
 
       return pool unless block
       block.call(pool)

@@ -168,14 +168,14 @@ module Xlogin
   end
 
   class SessionPool
+
     def initialize(args, **opts)
       temp = case args
-             when Hash   then args
-             when String then opts
+             when String then opts.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
+             when Hash   then args.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
              end
 
-      @opts = temp.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
-      @pool = ConnectionPool.new(**@opts) { Wrapper.new(args, **opts) }
+      @pool = ConnectionPool.new(**temp) { Wrapper.new(args, **opts) }
     end
 
     def with(**opts)
@@ -209,5 +209,6 @@ module Xlogin
         @session.send(name, *args, &block)
       end
     end
+
   end
 end

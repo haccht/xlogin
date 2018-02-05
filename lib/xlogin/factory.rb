@@ -9,7 +9,6 @@ module Xlogin
     def initialize
       @database  = Hash.new
       @templates = Hash.new
-      @pools     = Hash.new
       @group     = nil
     end
 
@@ -57,23 +56,6 @@ module Xlogin
 
     def list_templates
       @templates.keys
-    end
-
-    def set_pool(args, **opts)
-      name = case args
-             when String then args
-             when Hash   then URI(args[:uri]).host
-             end
-
-      @pools[name] = SessionPool.new(args, **opts)
-    end
-
-    def get_pool(name)
-      @pools[name]
-    end
-
-    def list_pools
-      @pools.keys
     end
 
     def group(group_name)
