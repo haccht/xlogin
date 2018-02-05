@@ -19,21 +19,21 @@ module Xlogin
       @factory ||= Xlogin::Factory.instance
     end
 
-    def get(args, **opts)
+    def get(args, **opts, &block)
       session = case args
                 when Hash   then factory.build(**args.merge(**opts))
                 when String then factory.build_from_hostname(args, **opts)
                 end
 
-      if block_given?
-        begin yield session ensure session.close end
-      else
-        session
-      end
+      return session unless block
+      begin block.call(session) ensure session.close end
     end
 
-    def get_pool(args, **opts)
-      Xlogin::SessionPool.new(args, **opts)
+    def get_pool(args, **opts, &block)
+      pool = factory.set_template(args, **opts)
+
+      return pool unless block
+      block.call(pool)
     end
 
     def configure(&block)

@@ -174,8 +174,8 @@ module Xlogin
              when String then opts
              end
 
-      slice = temp.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
-      @pool = ConnectionPool.new(**slice) { Wrapper.new(args, **opts) }
+      @opts = temp.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
+      @pool = ConnectionPool.new(**@opts) { Wrapper.new(args, **opts) }
     end
 
     def with(**opts)
