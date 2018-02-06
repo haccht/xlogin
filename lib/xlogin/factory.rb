@@ -21,7 +21,7 @@ module Xlogin
 
     def set(**opts)
       name = opts[:name]
-      @database[name] = opts if name
+      @database[name] = (get(name) || {}).merge(opts) if name
     end
 
     def get(name)
