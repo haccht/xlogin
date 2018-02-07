@@ -37,12 +37,7 @@ module Xlogin
     end
 
     def configure(&block)
-      if block
-        instance_eval(&block)
-      else
-        source
-        template_dir
-      end
+      instance_eval(&block)
     end
 
     def authorized?

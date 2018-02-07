@@ -66,6 +66,8 @@ module Xlogin
     end
 
     def build(type:, uri:, **opts)
+      Xlogin.configure { template_dir } if @templates.empty?
+
       template = get_template(type)
       raise Xlogin::TemplateError.new("Template not found: '#{type}'") unless template
 
@@ -73,6 +75,8 @@ module Xlogin
     end
 
     def build_from_hostname(hostname, **opts)
+      Xlogin.configure { source } if @database.empty?
+
       hostinfo = get(hostname)
       raise Xlogin::SessionError.new("Host not found: '#{hostname}'") unless hostinfo
 
