@@ -66,7 +66,7 @@ module Xlogin
     end
 
     def build(type:, uri:, **opts)
-      Xlogin.configure { template_dir } if @template.empty?
+      Xlogin.configure { template_dir } if @templates.empty?
 
       template = get_template(type)
       raise Xlogin::TemplateError.new("Template not found: '#{type}'") unless template
