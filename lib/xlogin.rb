@@ -1,6 +1,5 @@
 $:.unshift File.dirname(__FILE__)
 
-require 'thread'
 require 'xlogin/factory'
 require 'xlogin/version'
 

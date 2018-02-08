@@ -116,7 +116,7 @@ module Xlogin
           loggers << File.join(config.logdir, "#{hostname}.log") if config.logdir
 
           session = Xlogin.get(hostinfo.merge(log: loggers))
-          session.enable if session.config.enable
+          session.enable if session.config.enable && config.enable
 
           block.call(session)
         rescue => e
