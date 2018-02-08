@@ -61,8 +61,8 @@ module Xlogin
       cmd('').lines.last.chomp
     end
 
-    def cmd(*args)
-      @mutex.synchronize { super(*args) }
+    def cmd(*args, &block)
+      @mutex.synchronize { super(*args, &block) }
     end
 
     def puts(*args, &block)
@@ -73,19 +73,17 @@ module Xlogin
     def waitfor(*args, &block)
       return waitfor(Regexp.union(*@template.prompt.map(&:first)), &block) if args.empty?
 
-      line = super(*args) do |recvdata|
-        output_log(recvdata, &block)
-      end
+      line = super(*args, &block)
 
       _, process = @template.prompt.find { |r, p| r =~ line && p }
       if process
         instance_eval(&process)
         line += waitfor(*args, &block)
       end
-
-      line
     rescue EOFError
       @closed = true
+    ensure
+      return line
     end
 
     def close
@@ -142,8 +140,7 @@ module Xlogin
       end
     end
 
-    def output_log(text, &block)
-      block.call(text) if block
+    def output_log(text)
       @output_loggers.each do |_, logger|
         next unless logger
         logger.syswrite(text)

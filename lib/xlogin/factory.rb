@@ -51,7 +51,11 @@ module Xlogin
     end
 
     def get_template(name)
-      @templates[name.to_s.downcase] ||= Xlogin::Template.new(name)
+      unless @templates[name.to_s.downcase]
+        $stderr.print "Template not found: '#{type}'\n"
+        @templates[name.to_s.downcase] = Xlogin::Template.new(name)
+      end
+      @templates[name.to_s.downcase]
     end
 
     def list_templates
@@ -69,8 +73,6 @@ module Xlogin
       Xlogin.configure { template_dir } if @templates.empty?
 
       template = get_template(type)
-      raise Xlogin::TemplateError.new("Template not found: '#{type}'") unless template
-
       template.build(uri, **opts)
     end
 
