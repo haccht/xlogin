@@ -7,18 +7,12 @@ module Xlogin
 
     prepend SessionModule
 
-    alias_method :telnet_login, :login
-    undef_method :login
-
     def initialize(args)
       username = args.delete('Username')
       password = args.delete('Password')
-      super(args)
 
-      if username || password
-        return login(*[username, password].compact) if respond_to?(:login)
-        telnet_login(*[username, password].compact)
-      end
+      super(args)
+      login(*[username, password].compact) if username || password
     end
 
     def interact!

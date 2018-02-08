@@ -115,7 +115,7 @@ module Xlogin
           loggers << $stdout if config.parallels == 1
           loggers << File.join(config.logdir, "#{hostname}.log") if config.logdir
 
-          session = Xlogin.factory.build(hostinfo.merge(log: loggers))
+          session = Xlogin.get(hostinfo.merge(log: loggers))
           session.enable if session.config.enable
 
           block.call(session)

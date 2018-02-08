@@ -13,20 +13,20 @@ module Xlogin
     attr_accessor :config
 
     def initialize(template, uri, **opts)
-      @template = template
-      @config   = OpenStruct.new(opts)
-
       @uri  = uri
       @host = uri.host
-      @name = uri.host
       @port = uri.port
       @port ||= case @uri.scheme
                 when 'ssh'    then 22
                 when 'telnet' then 23
                 end
 
-      @username, @password = uri.userinfo.to_s.split(':')
       raise ArgumentError.new("Invalid URI - '#{uri}'") unless @host && @port
+
+      @name     = opts.delete(:name) || @host
+      @config   = OpenStruct.new(opts)
+      @template = template
+      @username, @password = uri.userinfo.to_s.split(':')
 
       ssh_tunnel(@config.via) if @config.via
       max_retry = @config.retry || 1
@@ -71,10 +71,11 @@ module Xlogin
     end
 
     def waitfor(*args, &block)
-      line = ''
-      return waitfor(Regexp.union(*@template.prompt.map(&:first)), &block) if args.empty?
-
-      line = super(*args, &block)
+      args << Regexp.union(*@template.prompt.map(&:first)) if args.empty?
+      line = super(*args) do |recv|
+        block.call(recv) if block
+        output_log(recv)
+      end
 
       _, process = @template.prompt.find { |r, p| r =~ line && p }
       if process
@@ -94,6 +95,7 @@ module Xlogin
           logger.close if output_log.kind_of?(String)
         end
         @gateway.shutdown! if @gateway
+
         super
         @closed = true
       end
@@ -153,11 +155,10 @@ module Xlogin
         case output_log
         when String
           FileUtils.mkdir_p(File.dirname(output_log))
-          logger = File.open(output_log, 'a+')
-          logger.binmode
-          logger.sync = true
-
-          loggers[output_log] = logger
+          loggers[output_log] = File.open(output_log, 'a+').tap do |logger|
+            logger.binmode
+            logger.sync = true
+          end
         when IO, StringIO
           loggers[output_log] = output_log
         end
@@ -168,12 +169,12 @@ module Xlogin
   class SessionPool
 
     def initialize(args, **opts)
-      temp = case args
-             when String then opts.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
-             when Hash   then args.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
-             end
+      pool_opts = case args
+                  when String then opts.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
+                  when Hash   then args.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
+                  end
 
-      @pool = ConnectionPool.new(**temp) { Wrapper.new(args, **opts) }
+      @pool = ConnectionPool.new(**pool_opts) { Wrapper.new(args, **opts) }
     end
 
     def with(**opts)
