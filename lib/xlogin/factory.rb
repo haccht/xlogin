@@ -65,22 +65,20 @@ module Xlogin
       @group = current_group
     end
 
+    def pool(args, **opts)
+      SessionPool.new(args, **opts)
+    end
+
     def build(type:, uri:, **opts)
-      Xlogin.configure { template_dir } if @templates.empty?
-
       template = get_template(type)
-      raise Xlogin::TemplateError.new("Template not found: '#{type}'") unless template
-
       template.build(uri, **opts)
     end
 
     def build_from_hostname(hostname, **opts)
-      Xlogin.configure { source } if @database.empty?
-
       hostinfo = get(hostname)
       raise Xlogin::SessionError.new("Host not found: '#{hostname}'") unless hostinfo
 
-      build(hostinfo.merge(**opts)).tap { |s| s.name = hostname }
+      build(hostinfo.merge(name: hostname, **opts))
     end
 
     def method_missing(method_name, *args, &block)

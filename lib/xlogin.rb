@@ -30,7 +30,7 @@ module Xlogin
     end
 
     def get_pool(args, **opts, &block)
-      pool = SessionPool.new(args, **opts)
+      pool = factory.pool(args, **opts)
 
       return pool unless block
       block.call(pool)

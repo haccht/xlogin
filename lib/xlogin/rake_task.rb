@@ -71,8 +71,8 @@ module Xlogin
       end
 
       begin
-        session = Xlogin.factory.build_from_hostname(name, log: loggers, timeout: timeout)
-        session.enable if session.config.enable
+        session = Xlogin.get(name, log: loggers, timeout: timeout)
+
         @runner.call(session)
         session.close if session
       rescue => e
