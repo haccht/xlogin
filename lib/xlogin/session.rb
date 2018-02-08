@@ -71,6 +71,7 @@ module Xlogin
     end
 
     def waitfor(*args, &block)
+      line = ''
       return waitfor(Regexp.union(*@template.prompt.map(&:first)), &block) if args.empty?
 
       line = super(*args, &block)
