@@ -52,7 +52,7 @@ module Xlogin
 
     def get_template(name)
       unless @templates[name.to_s.downcase]
-        $stderr.print "Template not found: '#{type}'\n"
+        $stderr.print "Template not found: '#{name}'\n"
         @templates[name.to_s.downcase] = Xlogin::Template.new(name)
       end
       @templates[name.to_s.downcase]
