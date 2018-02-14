@@ -1,6 +1,7 @@
 $:.unshift File.dirname(__FILE__)
 
 require 'xlogin/factory'
+require 'xlogin/session_pool'
 require 'xlogin/version'
 
 module Xlogin
@@ -30,7 +31,7 @@ module Xlogin
     end
 
     def get_pool(args, **opts, &block)
-      pool = factory.pool(args, **opts)
+      pool = Xlogin::SessionPool.new(args, **opts)
 
       return pool unless block
       block.call(pool)

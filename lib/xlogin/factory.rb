@@ -1,4 +1,5 @@
 require 'singleton'
+require 'thread'
 require 'xlogin/template'
 
 module Xlogin
@@ -9,6 +10,7 @@ module Xlogin
     def initialize
       @database  = Hash.new
       @templates = Hash.new
+      @mutex     = Mutex.new
       @group     = nil
     end
 
@@ -65,16 +67,16 @@ module Xlogin
       @group = current_group
     end
 
-    def pool(args, **opts)
-      SessionPool.new(args, **opts)
-    end
-
     def build(type:, uri:, **opts)
+      @mutex.synchronize { Xlogin.configure { template_dir } if @templates.empty? }
+
       template = get_template(type)
       template.build(uri, **opts)
     end
 
     def build_from_hostname(hostname, **opts)
+      @mutex.synchronize { Xlogin.configure { source } if @database.empty? }
+
       hostinfo = get(hostname)
       raise Xlogin::SessionError.new("Host not found: '#{hostname}'") unless hostinfo
 
