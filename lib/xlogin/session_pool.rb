@@ -5,15 +5,17 @@ module Xlogin
   class SessionPool
 
     DEFAULT_SIZE = 1
-    DEFAULT_IDLE = 10
+    DEFAULT_IDLE = false
 
     def initialize(args, **opts)
-      @args = args
-      @opts = opts
+      @args  = args
+      @opts  = opts
 
-      @mutex   = Mutex.new
-      @queue   = Queue.new
-      @created = 0
+      @mutex = Mutex.new
+      @queue = Queue.new
+
+      @created  = 0
+      @watchdog = Hash.new
     end
 
     def size
@@ -43,27 +45,34 @@ module Xlogin
     def deq
       session = try_create
       unless session
-        session, expires = @queue.deq
-        if expires < Time.now
-          session.close
-          session = session.duplicate
-        end
+        session, updated = @queue.deq
+        session = session.duplicate if idle && updated + idle.to_f < Time.now
       end
 
       session
     end
 
     def enq(session)
-      @queue.enq [session, Time.now + idle]
+      @mutex.synchronize { update_watchdog(session) }
+      @queue.enq [session, Time.now]
     end
 
     def try_create
       @mutex.synchronize do
         return unless @created < size
-
         @created += 1
-        Xlogin.get(@args, **@opts)
+
+        session = Xlogin.get(@args, **@opts)
+        update_watchdog(session)
+        session
       end
+    end
+
+    def update_watchdog(session)
+      return unless idle
+
+      @watchdog[session].tap { |th| th.kill if th }
+      @watchdog[session] = Thread.new(session) { |s| sleep(idle.to_f + 1) && s.close }
     end
   end
 end
