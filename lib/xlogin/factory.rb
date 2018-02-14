@@ -1,4 +1,5 @@
 require 'singleton'
+require 'thread'
 require 'xlogin/template'
 
 module Xlogin
@@ -63,10 +64,6 @@ module Xlogin
       @group = [current_group, group_name.to_s].compact.join(':')
       yield
       @group = current_group
-    end
-
-    def pool(args, **opts)
-      SessionPool.new(args, **opts)
     end
 
     def build(type:, uri:, **opts)

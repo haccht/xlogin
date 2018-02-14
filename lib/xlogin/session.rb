@@ -1,4 +1,3 @@
-require 'connection_pool'
 require 'delegate'
 require 'fileutils'
 require 'net/ssh/gateway'
@@ -21,7 +20,7 @@ module Xlogin
                 when 'telnet' then 23
                 end
 
-      raise ArgumentError.new("Invalid URI - '#{uri}'") unless @host && @port
+      raise SessionError.new("Invalid URI - '#{uri}'") unless @host && @port
 
       @name     = opts.delete(:name) || @host
       @config   = OpenStruct.new(opts)
@@ -164,50 +163,5 @@ module Xlogin
         end
       end
     end
-  end
-
-  class SessionPool
-
-    def initialize(args, **opts)
-      pool_opts = case args
-                  when String then opts.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
-                  when Hash   then args.select { |k, v| %i(size timeout).member?(k) && !v.nil? }
-                  end
-
-      @pool = ConnectionPool.new(**pool_opts) { Wrapper.new(args, **opts) }
-    end
-
-    def with(**opts)
-      @pool.with(**opts) do |session|
-        session.repair if session.closed?
-        session.aging_time(opts[:aging]) if opts[:aging]
-
-        yield session
-      end
-    end
-
-    class Wrapper
-      def initialize(*args)
-        @session = Xlogin.get(*args)
-        @agetime = nil
-      end
-
-      def repair
-        @session = @session.duplicate
-      end
-
-      def aging_time(time = @session.config.timeout)
-        @agetime = Time.now + time
-        Thread.start do
-          sleep(time)
-          @session.close if Time.now > @agetime
-        end
-      end
-
-      def method_missing(name, *args, &block)
-        @session.send(name, *args, &block)
-      end
-    end
-
   end
 end

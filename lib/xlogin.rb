@@ -1,6 +1,7 @@
 $:.unshift File.dirname(__FILE__)
 
 require 'xlogin/factory'
+require 'xlogin/session_pool'
 require 'xlogin/version'
 
 module Xlogin
@@ -30,7 +31,7 @@ module Xlogin
     end
 
     def get_pool(args, **opts, &block)
-      pool = factory.pool(args, **opts)
+      pool = Xlogin::SessionPool.new(args, **opts)
 
       return pool unless block
       block.call(pool)
@@ -53,7 +54,13 @@ module Xlogin
       factory.source(source_file || DEFAULT_INVENTORY_FILE)
     end
 
-    def template(*template_files)
+    def template(*template_dirs)
+      files = template_dirs.flat_map { |dir| Dir.glob(File.join(dir, '*.rb')) }
+      load_template(*files)
+    end
+    alias_method :template_dir, :template
+
+    def load_template(*template_files)
       return factory.source_template(*template_files) unless template_files.empty?
 
       unless Dir.exist?(DEFAULT_TEMPLATE_DIR)
@@ -61,11 +68,6 @@ module Xlogin
         BUILTIN_TEMPLATE_FILES.each { |file| FileUtils.cp(file, DEFAULT_TEMPLATE_DIR) }
       end
       template_dir(DEFAULT_TEMPLATE_DIR)
-    end
-
-    def template_dir(*template_dirs)
-      files = template_dirs.flat_map { |dir| Dir.glob(File.join(dir, '*.rb')) }
-      template(*files)
     end
 
   end
