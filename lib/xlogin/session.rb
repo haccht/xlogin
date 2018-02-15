@@ -20,7 +20,7 @@ module Xlogin
                 when 'telnet' then 23
                 end
 
-      raise ArgumentError.new("Invalid URI - '#{uri}'") unless @host && @port
+      raise SessionError.new("Invalid URI - '#{uri}'") unless @host && @port
 
       @name     = opts.delete(:name) || @host
       @config   = OpenStruct.new(opts)

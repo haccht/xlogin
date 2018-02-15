@@ -60,10 +60,11 @@ module Xlogin
     def try_create
       @mutex.synchronize do
         return unless @created < size
-        @created += 1
 
         session = Xlogin.get(@args, **@opts)
         update_watchdog(session)
+
+        @created += 1
         session
       end
     end
@@ -75,4 +76,5 @@ module Xlogin
       @watchdog[session] = Thread.new(session) { |s| sleep(idle.to_f + 1) && s.close }
     end
   end
+
 end

@@ -10,7 +10,6 @@ module Xlogin
     def initialize
       @database  = Hash.new
       @templates = Hash.new
-      @mutex     = Mutex.new
       @group     = nil
     end
 
@@ -68,15 +67,11 @@ module Xlogin
     end
 
     def build(type:, uri:, **opts)
-      @mutex.synchronize { Xlogin.configure { template_dir } if @templates.empty? }
-
       template = get_template(type)
       template.build(uri, **opts)
     end
 
     def build_from_hostname(hostname, **opts)
-      @mutex.synchronize { Xlogin.configure { source } if @database.empty? }
-
       hostinfo = get(hostname)
       raise Xlogin::SessionError.new("Host not found: '#{hostname}'") unless hostinfo
 
