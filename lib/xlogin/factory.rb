@@ -15,8 +15,10 @@ module Xlogin
 
     def source(*files)
       files.compact.each do |file|
-        file = File.expand_path(file)
-        instance_eval(IO.read(file)) if File.exist?(file)
+        path = File.expand_path(file, ENV['PWD'])
+        raise SessionError.new("File not found: #{file}") unless File.exist?(path)
+
+        instance_eval(IO.read(path))
       end
     end
 
@@ -37,11 +39,11 @@ module Xlogin
 
     def source_template(*files)
       files.compact.each do |file|
-        file = File.expand_path(file)
-        name = File.basename(file, '.rb').scan(/\w+/).join('_')
-        next unless File.exist?(file)
+        path = File.expand_path(file, ENV['PWD'])
+        name = File.basename(path, '.rb').scan(/\w+/).join('_')
+        raise TemplateError.new("File not found: #{file}") unless File.exist?(path)
 
-        set_template(name, IO.read(file))
+        set_template(name, IO.read(path))
       end
     end
 

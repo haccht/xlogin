@@ -52,8 +52,8 @@ module Xlogin
 
       args = parser.parse(args)
       Xlogin.configure do
-        template(*config.templates)
         source(config.inventory)
+        load_template(*config.templates)
         authorize(config.assume_yes)
       end
 

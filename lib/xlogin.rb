@@ -46,7 +46,7 @@ module Xlogin
     end
 
     private
-    def authorize(boolean = false, &block)
+    def authorize(boolean = true, &block)
       @authorized = boolean == true || (block && block.call == true)
     end
 
@@ -55,7 +55,10 @@ module Xlogin
     end
 
     def template(*template_dirs)
-      files = template_dirs.flat_map { |dir| Dir.glob(File.join(dir, '*.rb')) }
+      files = template_dirs.flat_map do |dir|
+        raise TemplateError.new("Directory not found: #{dir}") unless File.exist?(dir)
+        Dir.glob(File.join(dir, '*.rb'))
+      end
       load_template(*files)
     end
     alias_method :template_dir, :template
