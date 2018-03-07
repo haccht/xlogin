@@ -3,17 +3,29 @@ rancid clogin alternative.
 
 ## Usage
 
-ネットワークデバイスへのログインを自動化するツール群。  
-`xlogin/firmares`にファームウェア仕様を記述することで対象機器を拡大可能。
+ネットワークデバイスへのログイン処理を自動化するツール群。  
+`~/.xlogin.d/`にファームウェア毎のログイン仕様(template)を記述することで自働化対象機器を任意に設定可能。
+templateの記述例は[lib/xlogin/templates](https://github.com/haccht/xlogin/tree/master/lib/xlogin/templates)を参照のこと。
 
-
-各個別装置毎のログインのための認証情報は`~/.xloginrc`へ記述しておく。  
-`.xloginrc`のフォーマットはDSL形式で下記の通り
+各個別装置毎のログインのための認証情報は`~/.xloginrc`へ記述する。  
+`.xloginrc`のフォーマットはDSL形式で下記の通り。
 
 ~~~
 #hosttype	hostname	telnet_uri_scheme	options
 vyos	'vyos01',	'telnet://vagrant:vagrant@127.0.0.1:2200'
 vyos	'vyos02',	'telnet://vagrant:vagrant@127.0.0.1:2201'
+~~~
+
+下記コマンドでvyos01へ自動ログインし、プロンプトをユーザに渡す。
+
+~~~sh
+xlogin vyos01
+~~~
+
+またワンライナーで複数コマンドを一括投入する場合は以下の通り。
+
+~~~sh
+xlogin vyos01 -m exec -a 'show configuration command | no-more; exit'
 ~~~
 
 ## Installation
