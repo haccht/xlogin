@@ -22,10 +22,10 @@ vyos	'vyos02',	'telnet://vagrant:vagrant@127.0.0.1:2201'
 xlogin vyos01
 ~~~
 
-またワンライナーで複数コマンドを一括投入する場合は以下の通り。
+また下記コマンドでvyos01,vyos02へ同時に自動ログインし、コマンドを一括投入する。
 
 ~~~sh
-xlogin vyos01 -m exec -a 'show configuration command | no-more; exit'
+xlogin 'vyos*' exec 'show configuration command | no-more; exit' -j 2
 ~~~
 
 ## Installation
