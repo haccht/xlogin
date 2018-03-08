@@ -6,10 +6,6 @@ require 'xlogin/version'
 
 module Xlogin
 
-  DEFAULT_INVENTORY_FILE = File.join(ENV['HOME'], '.xloginrc')
-  DEFAULT_TEMPLATE_DIR   = File.join(ENV['HOME'], '.xlogin.d')
-  BUILTIN_TEMPLATE_FILES = Dir.glob(File.join(File.dirname(__FILE__), 'xlogin', 'templates', '*.rb'))
-
   class SessionError       < StandardError; end
   class TemplateError      < StandardError; end
   class AuthorizationError < StandardError; end
@@ -45,32 +41,29 @@ module Xlogin
       @authorized == true
     end
 
+    def generate_templates(dir)
+      FileUtils.mkdir_p(dir) unless Dir.exist?(dir)
+      builtin_templates = Dir.glob(File.join(File.dirname(__FILE__), 'xlogin', 'templates', '*.rb'))
+      builtin_templates.each { |file| FileUtils.cp(file, DEFAULT_TEMPLATE_DIR) }
+    end
+
     private
     def authorize(boolean = true, &block)
       @authorized = boolean == true || (block && block.call == true)
     end
 
-    def source(source_file = nil)
-      factory.source(source_file || DEFAULT_INVENTORY_FILE)
+    def source(*source_files)
+      factory.source(*source_files)
     end
 
     def template(*template_dirs)
-      files = template_dirs.flat_map do |dir|
-        raise TemplateError.new("Directory not found: #{dir}") unless File.exist?(dir)
-        Dir.glob(File.join(dir, '*.rb'))
-      end
-      load_template(*files)
+      files = template_dirs.flat_map { |dir| Dir.glob(File.join(dir, '*.rb')) }
+      load_templates(*files)
     end
     alias_method :template_dir, :template
 
-    def load_template(*template_files)
-      return factory.source_template(*template_files) unless template_files.empty?
-
-      unless Dir.exist?(DEFAULT_TEMPLATE_DIR)
-        FileUtils.mkdir_p(DEFAULT_TEMPLATE_DIR)
-        BUILTIN_TEMPLATE_FILES.each { |file| FileUtils.cp(file, DEFAULT_TEMPLATE_DIR) }
-      end
-      template_dir(DEFAULT_TEMPLATE_DIR)
+    def load_templates(*template_files)
+      factory.source_template(*template_files)
     end
 
   end

@@ -10,15 +10,12 @@ module Xlogin
     def initialize
       @database  = Hash.new
       @templates = Hash.new
-      @group     = nil
     end
 
     def source(*files)
       files.compact.each do |file|
-        path = File.expand_path(file, ENV['PWD'])
-        raise SessionError.new("File not found: #{file}") unless File.exist?(path)
-
-        instance_eval(IO.read(path))
+        raise SessionError.new("Inventory file not found: #{file}") unless File.exist?(file)
+        instance_eval(IO.read(file)) if File.exist?(file)
       end
     end
 
@@ -31,19 +28,17 @@ module Xlogin
       @database[name]
     end
 
-    def list(name = nil)
-      keys = @database.keys
-      keys = keys.select { |key| key =~ /^#{name}(:|$)/ } unless name.nil? || name.to_s == 'all'
-      @database.values_at(*keys)
+    def list(pattern = nil)
+      key, val = pattern.to_s.split(':')
+      key, val = 'name', (key || '*') if val.nil?
+      @database.values.select { |info| File.fnmatch(val, info[key.to_sym]) }
     end
 
     def source_template(*files)
       files.compact.each do |file|
-        path = File.expand_path(file, ENV['PWD'])
-        name = File.basename(path, '.rb').scan(/\w+/).join('_')
-        raise TemplateError.new("File not found: #{file}") unless File.exist?(path)
-
-        set_template(name, IO.read(path))
+        raise TemplateError.new("Template file not found: #{file}") unless File.exist?(file)
+        name = File.basename(file, '.rb').scan(/\w+/).join('_')
+        set_template(name, IO.read(file)) if File.exist?(file)
       end
     end
 
@@ -59,13 +54,6 @@ module Xlogin
 
     def list_templates
       @templates.keys
-    end
-
-    def group(group_name)
-      current_group = @group
-      @group = [current_group, group_name.to_s].compact.join(':')
-      yield
-      @group = current_group
     end
 
     def build(type:, uri:, **opts)
@@ -84,7 +72,7 @@ module Xlogin
       super unless caller_locations.first.label == 'block in source' and args.size >= 2
 
       type = method_name.to_s.downcase
-      name = [@group, args.shift].compact.join(':')
+      name = args.shift
       uri  = args.shift
       opts = args.shift || {}
       set(type: type, name: name, uri: uri, **opts)
