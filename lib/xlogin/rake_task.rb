@@ -63,9 +63,9 @@ module Xlogin
       if lock
         task(name => lock)
         file(lock) do
-          File.open(lock, 'w') do |fd|
-            run_task if fd.flock(File::LOCK_EX|File::LOCK_NB)
-          end
+          run_task
+          mkdir_p(File.dirname(lock), verbose: Rake.application.options.trace)
+          touch(lock, verbose: Rake.application.options.trace)
         end
       else
         task(name) do
