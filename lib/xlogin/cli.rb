@@ -3,6 +3,7 @@
 require 'optparse'
 require 'ostruct'
 require 'parallel'
+require 'readline'
 require 'stringio'
 
 module Xlogin
@@ -75,10 +76,14 @@ module Xlogin
     end
 
     def tty(config)
-      target = config.hostlist.sort_by { |e| e[:name] }.first
-      $stdout.puts "Trying #{target[:name]}...", "Escape character is '^]'."
-      config.hostlist = [target]
-      login(config) { |session| session.interact! }
+      Signal.trap(:INT) { exit 0 }
+      list = config.hostlist.sort_by { |e| e[:name] }
+      list.each do |target|
+        Readline.readline(">> #{target[:name]} ", false) unless list.size == 1
+        $stdout.puts "Trying #{target[:name]}...", "Escape character is '^]'."
+        config.hostlist = [target]
+        login(config) { |session| session.interact! }
+      end
     end
 
     def exec(config)
