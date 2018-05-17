@@ -4,6 +4,7 @@ require 'optparse'
 require 'ostruct'
 require 'parallel'
 require 'readline'
+require 'socket'
 require 'stringio'
 
 module Xlogin
@@ -20,13 +21,15 @@ module Xlogin
 
     def self.getopts(args)
       config = OpenStruct.new(
-        parallel:  1,
+        jobs: 1,
+        port: 8080,
+        taskname: :tty,
         inventory: nil,
         templates: [],
       )
 
       parser = OptionParser.new
-      parser.banner  = "#{File.basename($0)} HOST [TASK ARGUMENTS] [Options]"
+      parser.banner  = "#{File.basename($0)} HOST_PATTERN [Options]"
       parser.version = Xlogin::VERSION
 
       parser.on('-i PATH',        '--inventory',    String, 'The PATH to the inventory file(default: $HOME/.xloginrc).') { |v| config.inventory = v }
@@ -34,14 +37,20 @@ module Xlogin
       parser.on('-T DIRECTORY',   '--template-dir', String, 'The DIRECTORY of the template files.') { |v| config.templates += Dir.glob(File.join(v, '*.rb')) }
       parser.on('-L [DIRECTORY]', '--log-dir',      String, 'The DIRECTORY of the log files(default: $PWD).') { |v| config.logdir = v || '.' }
 
-      parser.on('-j NUM', '--jobs',       Integer,   'The NUM of jobs to execute in parallel(default: 1).') { |v| config.parallel = v }
-      parser.on('-e',     '--enable',     TrueClass, 'Try to gain enable priviledge.') { |v| config.enable = v }
+      parser.on('-l', '--list', TrueClass, 'List all available devices.') { |v| config.taskname = :list }
+      parser.on('-e', '--exec', TrueClass, 'Execute commands and quit.') { |v| config.taskname = :exec }
+      parser.on('-t', '--tty',  TrueClass, 'Allocate a pseudo-tty.') { |v| config.taskname = :tty }
+
+      parser.on('-p NUM', '--port', Integer, 'Run as server on specified port(default: 8080).') { |v| config.taskname = :listen; config.port = v }
+      parser.on('-j NUM', '--jobs', Integer, 'The NUM of jobs to execute in parallel(default: 1).') { |v| config.jobs = v }
+
+      parser.on('-E',     '--enable',     TrueClass, 'Try to gain enable priviledge.') { |v| config.enable = v }
       parser.on('-y',     '--assume-yes', TrueClass, 'Automatically answer yes to prompts.') { |v| config.authorize = v }
 
       begin
         args = parser.parse!(args)
-        hostlist = args.shift
-        taskname = args.shift || 'tty'
+        host = args.shift
+        config.args = args
 
         Xlogin.configure do
           config.inventory ||= DEFAULT_INVENTORY_FILE
@@ -55,13 +64,8 @@ module Xlogin
           load_templates(*config.templates.map { |file| File.expand_path(file, ENV['PWD']) })
         end
 
-        config.hostlist  = hostlist.to_s.split(',').flat_map { |pattern| Xlogin.factory.list(pattern) }
-        config.taskname  = taskname.to_s.downcase.tr('-', '_')
-        config.arguments = args
-
-        methods = Xlogin::CLI.instance_methods(false)
-        raise "No host found: `#{hostlist}`"   if config.hostlist.empty?
-        raise "No task defined: `#{taskname}`" if config.taskname.empty? || methods.find_index(config.taskname.to_sym).nil?
+        config.hostlist  = host.to_s.split(',').flat_map { |pattern| Xlogin.factory.list(pattern) }
+        raise "No host found: `#{host}`" if config.hostlist.empty?
       rescue => e
         $stderr.puts e, '', parser
         exit 1
@@ -71,55 +75,98 @@ module Xlogin
     end
 
     def list(config)
-      width = config.hostlist.map { |e| e[:name].length }.max
-      $stdout.puts config.hostlist.map { |e| "#{e[:name].to_s.ljust(width)} #{e[:type]}" }.sort
+      wid1 = config.hostlist.map { |e| e[:name].length }.max
+      wid2 = config.hostlist.map { |e| e[:type].length }.max
+      list = config.hostlist.map { |e| "#{e[:name].to_s.ljust(wid1)} #{e[:type].to_s.ljust(wid2)} #{e[:uri]}" }.sort
+      $stdout.puts list
     end
 
     def tty(config)
       Signal.trap(:INT) { exit 0 }
+
       list = config.hostlist.sort_by { |e| e[:name] }
       list.each do |target|
-        Readline.readline(">> #{target[:name]} ", false) unless list.size == 1
-        $stdout.puts "Trying #{target[:name]}...", "Escape character is '^]'."
+        unless list.size == 1
+          case resp = Readline.readline(">> #{target[:name]}(Y/n)? ", false).strip
+          when /^y(es)?$/i, ''
+          when /^n(o)?$/i then next
+          else redo
+          end
+        end
+
+        config.jobs = 1
         config.hostlist = [target]
-        login(config) { |session| session.interact! }
+
+        $stdout.puts "Trying #{target[:name]}...", "Escape character is '^]'."
+        session, _ = exec(config)
+        session.interact!
       end
     end
 
-    def exec(config)
-      command_lines = ['', *config.arguments.flat_map { |e| e.split(';') }].map(&:strip)
-      login(config) { |session| command_lines.each { |command| session.cmd(command) } }
+    def listen(config)
+      Signal.trap(:INT) { exit 0 }
+      config.jobs = config.hostlist.size
+
+      width    = config.hostlist.map { |e| e[:name].length }.max
+      sessions = exec(config).compact
+
+      $stdout.puts "", ""
+      $stdout.puts "=> Start xlogin server on port=#{config.port}"
+      $stdout.puts "=> Ctrl-C to shutdown"
+
+      server = TCPServer.open(config.port)
+      socket = server.accept
+      while line = socket.gets
+        Parallel.each(sessions, in_threads: sessions.size) do |session|
+          resp   = session.cmd(line.chomp)
+          prefix = "#{session.name.to_s.ljust(width)} |"
+          output = resp.to_s.lines.map { |line| prefix + line.chomp.gsub("\r", '') + "\n" }.join
+          socket.print  output
+          $stdout.print output if config.jobs > 1
+        end
+      end
+    ensure
+      socket.close if socket
+      server.close if server
     end
 
-    def load(config)
-      command_lines = ['', *config.arguments.flat_map { |e| IO.readlines(e) }].map(&:strip)
-      login(config) { |session| command_lines.each { |command| session.cmd(command) } }
-    end
+    def exec(config, &block)
+      width = config.hostlist.map { |e| e[:name].length }.max
 
-    private
-    def login(config, &block)
-      Parallel.map(config.hostlist, in_threads: config.parallel) do |hostinfo|
+      Parallel.map(config.hostlist, in_threads: config.jobs) do |hostinfo|
+        session = nil
+        error   = nil
+
         begin
           buffer   = StringIO.new
           hostname = hostinfo[:name]
 
           loggers  = []
-          loggers << ((config.parallel > 1)? buffer : $stdout)
+          loggers << ((config.jobs > 1)? buffer : $stdout)
           loggers << File.expand_path(File.join(config.logdir, "#{hostname}.log"), ENV['PWD']) if config.logdir
 
           session = Xlogin.get(hostinfo.merge(log: loggers))
           session.enable if config.enable && hostinfo[:enable]
 
-          block.call(session)
+          command_lines = ['', *config.args.flat_map { |e| e.split(';') }].map(&:strip)
+          command_lines.each { |line| session.cmd(line) }
+
+          block.call(session) if block
         rescue => e
-          lines = (config.parallel > 1)? ["\n#{hostname}\t| [Error] #{e}"] : ["\n[Error] #{e}"]
-          lines.each { |line| $stderr.print "#{line.chomp}\n" }
+          error = e
+        ensure
+          if config.jobs > 1
+            prefix = "#{hostname.to_s.ljust(width)} |"
+            output = buffer.string.lines.map { |line| prefix + line.chomp.gsub("\r", '') + "\n" }.join
+            $stdout.print output
+            $stderr.print prefix + "[Error] #{error}\n" if error
+          else
+            $stderr.print "[Error] #{error}\n" if error
+          end
+
         end
 
-        if config.parallel > 1
-          lines = buffer.string.lines.map { |line| "#{hostname}\t| " + line.gsub("\r", '') }
-          lines.each { |line| $stdout.print "#{line.chomp}\n" }
-        end
+        session
       end
     end
 
