@@ -31,7 +31,7 @@ module Xlogin
     def list(pattern = nil)
       key, val = pattern.to_s.split(':')
       key, val = 'name', (key || '*') if val.nil?
-      @database.values.select { |info| File.fnmatch(val, info[key.to_sym]) }
+      val.split(',').map { |e| @database.values.select { |info| File.fnmatch(e, info[key.to_sym]) } }.reduce(&:|)
     end
 
     def source_template(*files)

@@ -95,7 +95,7 @@ module Xlogin
     end
 
     def output(fp, text)
-      prefix = (Rake.application.options.always_multitask)? "#{name}\t| " : ""
+      prefix = (Rake.application.options.always_multitask)? "#{name}\t|" : ""
       lines  = text.lines.map { |line| "#{prefix}#{line.strip}\n" }
       lines.each { |line| $stdout.print line }
     end
