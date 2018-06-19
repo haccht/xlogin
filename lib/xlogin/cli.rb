@@ -111,7 +111,7 @@ module Xlogin
       sessions = exec(config).compact
 
       $stdout.puts "", ""
-      $stdout.puts "=> Start xlogin server on port=#{config.port}"
+      $stdout.puts "=> Started xlogin server on port=#{config.port}"
       $stdout.puts "=> Ctrl-C to shutdown"
 
       server = TCPServer.open(config.port)

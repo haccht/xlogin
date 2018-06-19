@@ -25,7 +25,7 @@ xlogin vyos01
 また下記コマンドでvyos01,vyos02へ同時に自動ログインし、コマンドを一括投入する。
 
 ~~~sh
-xlogin 'vyos*' exec 'show configuration command | no-more; exit' -j 2
+xlogin 'vyos*' -e 'show configuration command | no-more; exit' -j 2
 ~~~
 
 ## Installation
