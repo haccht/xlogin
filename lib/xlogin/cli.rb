@@ -64,7 +64,7 @@ module Xlogin
           load_templates(*config.templates.map { |file| File.expand_path(file, ENV['PWD']) })
         end
 
-        config.hostlist  = host.to_s.split(/\s+/).map { |pattern| Xlogin.factory.list(pattern) }.reduce(&:&)
+        config.hostlist  = Xlogin.factory.list(*host.to_s.split(/\s+/))
         raise "No host found: `#{host}`" if config.hostlist.empty?
       rescue => e
         $stderr.puts e, '', parser
@@ -75,9 +75,9 @@ module Xlogin
     end
 
     def list(config)
-      wid1 = config.hostlist.map { |e| e[:name].length }.max
-      wid2 = config.hostlist.map { |e| e[:type].length }.max
-      list = config.hostlist.map { |e| "#{e[:name].to_s.ljust(wid1)} #{e[:type].to_s.ljust(wid2)} #{e[:uri]}" }.sort
+      wid1 = config.hostlist.map { |e| e[:type].length }.max
+      wid2 = config.hostlist.map { |e| e[:name].length }.max
+      list = config.hostlist.map { |e| "#{e[:type].to_s.ljust(wid1)} #{e[:name].to_s.ljust(wid2)} #{e[:uri]}" }.sort
       $stdout.puts list
     end
 

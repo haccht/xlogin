@@ -28,6 +28,24 @@ xlogin vyos01
 xlogin 'vyos*' -e 'show configuration command | no-more; exit' -j 2
 ~~~
 
+その他のオプションは下記の通り。
+
+~~~sh
+$ xlogin -h
+xlogin HOST_PATTERN [Options]
+    -i, --inventory PATH             The PATH to the inventory file(default: $HOME/.xloginrc).
+        --template PATH              The PATH to the template file.
+    -T, --template-dir DIRECTORY     The DIRECTORY of the template files.
+    -L, --log-dir [DIRECTORY]        The DIRECTORY of the log files(default: $PWD).
+    -l, --list                       List all available devices.
+    -e, --exec                       Execute commands and quit.
+    -t, --tty                        Allocate a pseudo-tty.
+    -p, --port NUM                   Run as server on specified port(default: 8080).
+    -j, --jobs NUM                   The NUM of jobs to execute in parallel(default: 1).
+    -E, --enable                     Try to gain enable priviledge.
+    -y, --assume-yes                 Automatically answer yes to prompts.
+~~~
+
 ## Installation
 
 Add this line to your application's Gemfile:

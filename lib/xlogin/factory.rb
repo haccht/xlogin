@@ -1,5 +1,4 @@
 require 'singleton'
-require 'thread'
 require 'xlogin/template'
 
 module Xlogin
@@ -28,10 +27,15 @@ module Xlogin
       @database[name]
     end
 
-    def list(pattern = nil)
-      key, val = pattern.to_s.split(':')
-      key, val = 'name', (key || '*') if val.nil?
-      val.split(',').map { |e| @database.values.select { |info| File.fnmatch(e, info[key.to_sym]) } }.reduce(&:|)
+    def list(*patterns)
+      return @database.values if patterns.empty?
+
+      values = patterns.map do |pattern|
+        key, val = pattern.to_s.split(':')
+        key, val = 'name', key if val.nil?
+        val.split(',').map { |e| @database.values.select { |info| File.fnmatch(e, info[key.to_sym]) } }.reduce(&:|)
+      end
+      values.reduce(&:&).uniq
     end
 
     def source_template(*files)
@@ -75,6 +79,8 @@ module Xlogin
       name = args.shift
       uri  = args.shift
       opts = args.shift || {}
+
+      super if [type, name, uri].any? { |e| e.nil? }
       set(type: type, name: name, uri: uri, **opts)
     end
 

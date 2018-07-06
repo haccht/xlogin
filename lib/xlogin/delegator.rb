@@ -36,7 +36,7 @@ module Xlogin
     # vyos      'vyos01',        'telnet://user:pass@host:port'
     # relay_srv 'vyos01::relay', 'telnet://relay_user:relay_pass@relay_host:relay_port', relay: 'vyos01'
     #
-    ## Write firmware definition
+    ## Write firmware template for 'relay_srv'
     #
     # login do |username, password|
     #   waitfor(/login:\s*\z/)    && puts(username)

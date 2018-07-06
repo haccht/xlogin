@@ -45,12 +45,11 @@ module Xlogin
       klass = Class.new(Xlogin.const_get(uri.scheme.capitalize))
       klass.class_exec(@methods) do |methods|
         methods.each do |name, block|
-          case name
-          when :enable
-            define_method(name) { |args = opts[:enable]| instance_exec(args, &block) }
-          else
-            define_method(name, &block)
+          if name == :enable
+            define_method(name) { |*args| instance_exec([*args, opts[name]].first, &block) }
+            next
           end
+          define_method(name, &block)
         end
       end
 
@@ -58,7 +57,7 @@ module Xlogin
     end
 
     def method_missing(name, *, &block)
-      super unless RESERVED_METHODS.include? name
+      super unless RESERVED_METHODS.include?(name) and block_given?
       bind(name) { |*args| instance_exec(*args, &block) }
     end
   end
