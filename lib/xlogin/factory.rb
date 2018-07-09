@@ -7,7 +7,7 @@ module Xlogin
     include Singleton
 
     def initialize
-      @database  = Hash.new
+      @inventory = Hash.new
       @templates = Hash.new
     end
 
@@ -18,22 +18,23 @@ module Xlogin
       end
     end
 
-    def set(**opts)
+    def set_info(**opts)
       name = opts[:name]
-      @database[name] = (get(name) || {}).merge(opts) if name
+      return unless name
+      @inventory[name] = (get_info(name) || {}).merge(opts)
     end
 
-    def get(name)
-      @database[name]
+    def get_info(name)
+      @inventory[name]
     end
 
-    def list(*patterns)
-      return @database.values if patterns.empty?
+    def list_info(*patterns)
+      return @inventory.values if patterns.empty?
 
       values = patterns.map do |pattern|
         key, val = pattern.to_s.split(':')
         key, val = 'name', key if val.nil?
-        val.split(',').map { |e| @database.values.select { |info| File.fnmatch(e, info[key.to_sym]) } }.reduce(&:|)
+        val.split(',').map { |e| @inventory.values.select { |info| File.fnmatch(e, info[key.to_sym]) } }.reduce(&:|)
       end
       values.reduce(&:&).uniq
     end
@@ -66,7 +67,7 @@ module Xlogin
     end
 
     def build_from_hostname(hostname, **opts)
-      hostinfo = get(hostname)
+      hostinfo = get_info(hostname)
       raise Xlogin::SessionError.new("Host not found: '#{hostname}'") unless hostinfo
 
       build(hostinfo.merge(name: hostname, **opts))
@@ -81,7 +82,7 @@ module Xlogin
       opts = args.shift || {}
 
       super if [type, name, uri].any? { |e| e.nil? }
-      set(type: type, name: name, uri: uri, **opts)
+      set_info(type: type, name: name, uri: uri, **opts)
     end
 
   end
