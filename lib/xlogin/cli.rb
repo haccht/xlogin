@@ -64,7 +64,7 @@ module Xlogin
           load_templates(*config.templates.map { |file| File.expand_path(file, ENV['PWD']) })
         end
 
-        config.hostlist  = Xlogin.factory.list_info(*host.to_s.split(/\s+/))
+        config.hostlist  = Xlogin.list(*host.to_s.split(/\s+/))
         raise "No host found: `#{host}`" if config.hostlist.empty?
       rescue => e
         $stderr.puts e, '', parser

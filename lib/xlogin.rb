@@ -26,6 +26,10 @@ module Xlogin
       begin block.call(session) ensure session.close end
     end
 
+    def list(*patterns)
+      factory.list_info(*patterns)
+    end
+
     def get_pool(args, **opts, &block)
       pool = Xlogin::SessionPool.new(args, **opts)
 
