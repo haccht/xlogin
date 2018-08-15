@@ -11,7 +11,7 @@ module Xlogin
       include Rake::DSL
 
       def generate(*target, **opts, &block)
-        hostnames = target.flat_map { |e| Xlogin.factory.list_info(e) }.map { |e| e[:name] }
+        hostnames = target.flat_map { |e| Xlogin.list(e) }.map { |e| e[:name] }
 
         description = Rake.application.last_description
         task 'all' => hostnames unless opts[:bundle] == false
