@@ -32,7 +32,7 @@ module Xlogin
     attr_accessor :fail_on_error
 
     def initialize(name)
-      @name   = name
+      @name   = [*Rake.application.current_scope.to_a, name].join(':')
       @runner = nil
       @config = OpenStruct.new
       @silent ||= Rake.application.options.silent
