@@ -26,15 +26,17 @@ module Xlogin
     end
 
     attr_reader   :name
+    attr_reader   :taskname
     attr_accessor :lock
     attr_accessor :log
     attr_accessor :silent
     attr_accessor :fail_on_error
 
     def initialize(name)
-      @name   = [*Rake.application.current_scope.to_a, name].join(':')
-      @runner = nil
-      @config = OpenStruct.new
+      @name     = name
+      @taskname = [*Rake.application.current_scope.to_a.reverse, name].join(':')
+      @runner   = nil
+      @config   = OpenStruct.new
       @silent ||= Rake.application.options.silent
       @fail_on_error = true
 
