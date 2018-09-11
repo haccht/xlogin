@@ -131,8 +131,9 @@ module Xlogin
     end
 
     def exec(config, &block)
-      width = config.hostlist.map { |e| e[:name].length }.max
+      Signal.trap(:INT) { exit 0 }
 
+      width = config.hostlist.map { |e| e[:name].length }.max
       Parallel.map(config.hostlist, in_threads: config.jobs) do |hostinfo|
         session = nil
         error   = nil
