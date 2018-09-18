@@ -85,7 +85,7 @@ module Xlogin
 
       begin
         session = Xlogin.get(name, log: loggers, **@config.to_h)
-        session.instance_eval(&@runner)
+        @runner.call(session)
         session.close if session
 
         output($stdout, buffer.string) if !silent && Rake.application.options.always_multitask
