@@ -1,3 +1,4 @@
+require 'addressable/uri'
 require 'delegate'
 require 'fileutils'
 require 'net/ssh/gateway'
@@ -126,7 +127,7 @@ module Xlogin
 
     private
     def ssh_tunnel(gateway)
-      gateway_uri = URI(gateway)
+      gateway_uri = Addressable::URI.parse(gateway)
       case gateway_uri.scheme
       when 'ssh'
         username, password = *gateway_uri.userinfo.split(':')

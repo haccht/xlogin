@@ -1,3 +1,4 @@
+require 'addressable/uri'
 require 'uri'
 
 module Xlogin
@@ -10,13 +11,13 @@ module Xlogin
 
         target_info = Xlogin.factory.get_info(target_host)
         target_temp = Xlogin.factory.get_template(target_info[:type])
-        target_uri  = URI(target_info[:uri])
+        target_uri  = Addressable::URI.parse(target_info[:uri])
 
         login    = @methods.fetch(:login)
         delegate = @methods.fetch(:delegate)
         raise TemplateError.new("'login' and 'delegate' must be defined in the #{target_info[:type]} template.") unless login && delegate
 
-        relay_uri = URI(uri.to_s)
+        relay_uri = Addressable::URI.parse(uri.to_s)
         userinfo_cache = relay_uri.userinfo.dup
         relay_uri.userinfo = ''
 
