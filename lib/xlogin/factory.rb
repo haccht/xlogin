@@ -14,7 +14,7 @@ module Xlogin
     def source(*files)
       files.compact.each do |file|
         raise SessionError.new("Inventory file not found: #{file}") unless File.exist?(file)
-        instance_eval(IO.read(file)) if File.exist?(file)
+        instance_eval(IO.read(file), file) if File.exist?(file)
       end
     end
 

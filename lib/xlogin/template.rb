@@ -1,4 +1,4 @@
-require 'uri'
+require 'addressable/uri'
 require 'xlogin/ssh'
 require 'xlogin/telnet'
 
@@ -41,7 +41,7 @@ module Xlogin
     end
 
     def build(uri, **opts)
-      uri   = URI(uri.to_s)
+      uri   = Addressable::URI.parse(uri.to_s)
       klass = Class.new(Xlogin.const_get(uri.scheme.capitalize))
       klass.class_exec(@methods) do |methods|
         methods.each do |name, block|
