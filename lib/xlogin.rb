@@ -56,18 +56,45 @@ module Xlogin
       @authorized = boolean == true || (block && block.call == true)
     end
 
-    def source(*source_files)
-      factory.source(*source_files)
+    def register(**args)
+      factory.set_info(**args)
     end
 
-    def template(*template_dirs)
+    def source(*source_files)
+      source_files.compact.each do |file|
+        raise SessionError.new("Inventory file not found: #{file}") unless File.exist?(file)
+        instance_eval(IO.read(file), file) if File.exist?(file)
+      end
+    end
+
+    def template(name, *args, &block)
+      return template_dir(name, *args) unless block # for backward compatibility
+
+      raise ArgumentError.new('missing template name') unless name
+      factory.set_template(name, &block)
+    end
+
+    def template_dir(*template_dirs)
       files = template_dirs.flat_map { |dir| Dir.glob(File.join(dir, '*.rb')) }
       load_templates(*files)
     end
-    alias_method :template_dir, :template
 
-    def load_templates(*template_files)
-      factory.source_template(*template_files)
+    def template_file(*template_files)
+      template_files.compact.each do |file|
+        raise TemplateError.new("Template file not found: #{file}") unless File.exist?(file)
+        name = File.basename(file, '.rb').scan(/\w+/).join('_')
+        factory.set_template(name, IO.read(file)) if File.exist?(file)
+      end
+    end
+
+    def method_missing(method_name, *args, &block)
+      type = method_name.to_s.downcase
+      name = args[0]
+      uri  = args[1]
+      opts = args[2] || {}
+
+      super unless args.size == 2 || args.size == 3
+      register(type: type, name: name, uri: uri, **opts)
     end
 
   end

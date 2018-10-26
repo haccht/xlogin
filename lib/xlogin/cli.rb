@@ -61,14 +61,14 @@ module Xlogin
 
           authorize(config.authorize)
           source(File.expand_path(config.inventory, ENV['PWD']))
-          load_templates(*config.templates.map { |file| File.expand_path(file, ENV['PWD']) })
+          template_file(*config.templates.map { |file| File.expand_path(file, ENV['PWD']) })
         end
 
         config.hostlist  = Xlogin.list(*host.to_s.split(/\s+/))
         raise "No host found: `#{host}`" if config.hostlist.empty?
-      rescue => e
-        $stderr.puts e, '', parser
-        exit 1
+      #rescue => e
+      # $stderr.puts e, '', parser
+      # exit 1
       end
 
       config

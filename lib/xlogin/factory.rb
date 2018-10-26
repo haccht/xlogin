@@ -11,13 +11,6 @@ module Xlogin
       @templates = Hash.new
     end
 
-    def source(*files)
-      files.compact.each do |file|
-        raise SessionError.new("Inventory file not found: #{file}") unless File.exist?(file)
-        instance_eval(IO.read(file), file) if File.exist?(file)
-      end
-    end
-
     def set_info(**opts)
       name = opts[:name]
       return unless name
@@ -39,17 +32,10 @@ module Xlogin
       values.reduce(&:&).uniq
     end
 
-    def source_template(*files)
-      files.compact.each do |file|
-        raise TemplateError.new("Template file not found: #{file}") unless File.exist?(file)
-        name = File.basename(file, '.rb').scan(/\w+/).join('_')
-        set_template(name, IO.read(file)) if File.exist?(file)
-      end
-    end
-
-    def set_template(name, text)
+    def set_template(name, text = nil, &block)
       template = get_template(name)
-      template.instance_eval(text)
+      template.instance_eval(text)   if text
+      template.instance_eval(&block) if block
       @templates[name.to_s.downcase] = template
     end
 
@@ -68,21 +54,9 @@ module Xlogin
 
     def build_from_hostname(hostname, **opts)
       hostinfo = get_info(hostname)
-      raise Xlogin::SessionError.new("Host not found: '#{hostname}'") unless hostinfo
+      raise SessionError.new("Host not found: '#{hostname}'") unless hostinfo
 
       build(hostinfo.merge(name: hostname, **opts))
-    end
-
-    def method_missing(method_name, *args, &block)
-      super unless caller_locations.first.label == 'block in source' and args.size >= 2
-
-      type = method_name.to_s.downcase
-      name = args.shift
-      uri  = args.shift
-      opts = args.shift || {}
-
-      super if [type, name, uri].any? { |e| e.nil? }
-      set_info(type: type, name: name, uri: uri, **opts)
     end
 
   end
