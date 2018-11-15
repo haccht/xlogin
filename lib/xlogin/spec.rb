@@ -34,8 +34,8 @@ module Xlogin
     def match(regexp)
       regexp  = Regexp.new(regexp.to_s) unless regexp.kind_of?(Regexp)
       @expect = regexp.inspect
-      @actual = @session.cmd(*@args)
 
+      @actual || = @session.cmd(*@args)
       @actual =~ regexp
     end
 
