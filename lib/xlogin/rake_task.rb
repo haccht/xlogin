@@ -16,7 +16,7 @@ module Xlogin
         description = Rake.application.last_description
         task 'all' => hostnames unless opts[:bundle] == false
 
-        description = opts[:desc] if opts.key?(:desc)
+        description = opts[:desc]
         hostnames.each do |hostname|
           desc description
           RakeTask.new(hostname, &block)
@@ -96,6 +96,7 @@ module Xlogin
       rescue => e
         output($stderr, buffer.string) if !silent && Rake.application.options.always_multitask
         output($stderr, "[ERROR] Xlogin - #{e}\n")
+
         @@graceful_shutdown = true if fail_on_error
       end
     end

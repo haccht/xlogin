@@ -76,7 +76,7 @@ module Xlogin
 
     def template_dir(*template_dirs)
       files = template_dirs.flat_map { |dir| Dir.glob(File.join(dir, '*.rb')) }
-      load_templates(*files)
+      template_file(*files)
     end
 
     def template_file(*template_files)
