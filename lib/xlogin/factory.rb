@@ -1,3 +1,4 @@
+require 'addressable/uri'
 require 'singleton'
 require 'xlogin/template'
 
@@ -47,9 +48,18 @@ module Xlogin
       @templates.keys
     end
 
-    def build(type:, uri:, **opts)
+    def build(type:, **opts)
       template = get_template(type)
-      template.build(uri, **opts)
+      if opts[:uri]
+        template.build(opts[:uri], **opts)
+      else
+        scheme   = opts[:scheme]
+        address  = opts.values_at(:host, :port).compact.join(':')
+        userinfo = opts[:userinfo]
+        userinfo ||= opts.values_at(:username, :password).compact.join(':')
+
+        template.build("#{scheme}://" + [userinfo, address].compact.join('@'), **opts)
+      end
     end
 
     def build_from_hostname(hostname, **opts)
