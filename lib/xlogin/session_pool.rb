@@ -36,12 +36,6 @@ module Xlogin
       enq session
     end
 
-    def close
-      while session = @queue.deq
-        session.close rescue nil
-      end
-    end
-
     private
     def deq
       session = try_create
