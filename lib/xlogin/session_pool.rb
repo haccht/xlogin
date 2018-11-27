@@ -55,7 +55,7 @@ module Xlogin
 
     def try_create
       @mutex.synchronize do
-        return unless @created < size
+        return unless @created < @size
 
         @created += 1
         Xlogin.get(@args, **@opts)
