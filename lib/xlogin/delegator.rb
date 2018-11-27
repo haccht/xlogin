@@ -9,7 +9,7 @@ module Xlogin
         target_host = params.delete(:relay)
         return super(uri, **params) unless target_host
 
-        target_info = Xlogin.factory.get_info(target_host)
+        target_info = Xlogin.factory.get_inventory(target_host)
         target_temp = Xlogin.factory.get_template(target_info[:type])
         target_uri  = Addressable::URI.parse(target_info[:uri])
 

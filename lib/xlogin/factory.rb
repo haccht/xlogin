@@ -12,17 +12,16 @@ module Xlogin
       @templates = Hash.new
     end
 
-    def set_info(**opts)
-      name = opts[:name]
-      return unless name
-      @inventory[name] = (get_info(name) || {}).merge(opts)
+    def set_inventory(**opts)
+      return unless name = opts[:name]
+      @inventory[name] = (get_inventory(name) || {}).merge(opts)
     end
 
-    def get_info(name)
+    def get_inventory(name)
       @inventory[name]
     end
 
-    def list_info(*patterns)
+    def list_inventory(*patterns)
       return @inventory.values if patterns.empty?
 
       values = patterns.map do |pattern|
@@ -62,11 +61,15 @@ module Xlogin
       end
     end
 
-    def build_from_hostname(hostname, **opts)
-      hostinfo = get_info(hostname)
-      raise SessionError.new("Host not found: '#{hostname}'") unless hostinfo
+    def build_from_hostname(args, **opts)
+      hostinfo = get_inventory(args)
+      raise SessionError.new("Host not found: '#{args}'") unless hostinfo
 
-      build(hostinfo.merge(name: hostname, **opts))
+      build(hostinfo.merge(name: args, **opts))
+    end
+
+    def build_pool(args, **opts)
+      Xlogin::SessionPool.new(args, **opts)
     end
 
   end

@@ -27,11 +27,11 @@ module Xlogin
     end
 
     def list(*patterns)
-      factory.list_info(*patterns)
+      factory.list_inventory(*patterns)
     end
 
     def get_pool(args, **opts, &block)
-      pool = Xlogin::SessionPool.new(args, **opts)
+      pool = factory.build_pool(args, **opts)
 
       return pool unless block
       block.call(pool)
@@ -57,7 +57,7 @@ module Xlogin
     end
 
     def register(**args)
-      factory.set_info(**args)
+      factory.set_inventory(**args)
     end
 
     def source(*source_files)

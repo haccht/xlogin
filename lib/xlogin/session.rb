@@ -23,7 +23,7 @@ module Xlogin
 
       raise SessionError.new("Invalid URI - '#{uri}'") unless @host && @port
 
-      @name     = opts.delete(:name) || @host
+      @name     = opts[:name] || @host
       @config   = OpenStruct.new(opts)
       @template = template
       @username, @password = uri.userinfo.to_s.split(':')
@@ -31,10 +31,8 @@ module Xlogin
       ssh_tunnel(@config.via) if @config.via
       max_retry = @config.retry || 1
 
-      @mutex  = Mutex.new
-      @closed = false
-      @output_logs    = [@config.log]
-      @output_loggers = build_loggers
+      @mutex   = Mutex.new
+      @loggers = [@config.log].flatten.uniq.reduce({}) { |a, e| a.merge(e => build_logger(e)) }
 
       begin
         super(
@@ -48,7 +46,6 @@ module Xlogin
         )
       rescue => e
         retry if (max_retry -= 1) > 0
-        @closed = true
         raise e
       end
     end
@@ -61,18 +58,51 @@ module Xlogin
       cmd('').lines.last.chomp
     end
 
-    def cmd(*args, &block)
-      @mutex.synchronize { super(*args, &block) }
+    def duplicate
+      @template.build(@uri, **@config.to_h)
     end
 
     def puts(*args, &block)
-      args = instance_exec(*args, &@template.interrupt) if @template.interrupt
+      args = [instance_exec(*args, &@template.interrupt)].flatten if @template.interrupt
       super(*args, &block)
     end
 
     def waitfor(*args, &block)
+      @mutex.synchronize { _waitfor(*args, &block) }
+    end
+
+    def close
+      @mutex.synchronize do
+        @loggers.values.each do |logger|
+          next if logger.nil? || [$stdout, $stderr].include?(logger)
+          logger.close
+        end
+        @gateway.shutdown! if @gateway
+
+        super
+      end
+    end
+
+    def enable_log(log = $stdout)
+      @loggers.update(log => build_loggers(log))
+      if block_given?
+        yield
+        disable_log(log)
+      end
+    end
+
+    def disable_log(log = $stdout)
+      @loggers.delete(log)
+      if block_given?
+        yield
+        enable_log(log)
+      end
+    end
+
+    private
+    def _waitfor(*args, &block)
       args << Regexp.union(*@template.prompt.map(&:first)) if args.empty?
-      line = super(*args) do |recv|
+      line = method(:waitfor).super_method.call(*args) do |recv|
         block.call(recv) if block
         output_log(recv)
       end
@@ -80,52 +110,13 @@ module Xlogin
       _, process = @template.prompt.find { |r, p| r =~ line && p }
       if process
         instance_eval(&process)
-        line += waitfor(*args, &block)
+        line += _waitfor(*args, &block)
       end
     rescue EOFError
-      @closed = true
     ensure
       return line
     end
 
-    def close
-      @mutex.synchronize do
-        @output_loggers.each do |output_log, logger|
-          next unless logger
-          logger.close if output_log.kind_of?(String)
-        end
-        @gateway.shutdown! if @gateway
-
-        super
-        @closed = true
-      end
-    end
-
-    def closed?
-      @closed
-    end
-
-    def duplicate
-      @template.build(@uri, **config.to_h)
-    end
-
-    def enable_log(out = $stdout)
-      @output_loggers = build_loggers(@output_logs + [out])
-      if block_given?
-        yield
-        @output_loggers = build_loggers
-      end
-    end
-
-    def disable_log(out = $stdout)
-      @output_loggers = build_loggers(@output_logs - [out])
-      if block_given?
-        yield
-        @output_loggers = build_loggers
-      end
-    end
-
-    private
     def ssh_tunnel(gateway)
       gateway_uri = Addressable::URI.parse(gateway)
       case gateway_uri.scheme
@@ -144,24 +135,19 @@ module Xlogin
     end
 
     def output_log(text)
-      @output_loggers.each do |_, logger|
-        next unless logger
-        logger.syswrite(text)
-      end
+      @loggers.values.each { |logger| logger.syswrite(text) if logger }
     end
 
-    def build_loggers(output_logs = @output_logs)
-      [output_logs].flatten.uniq.each.with_object({}) do |output_log, loggers|
-        case output_log
-        when String
-          FileUtils.mkdir_p(File.dirname(output_log))
-          loggers[output_log] = File.open(output_log, 'a+').tap do |logger|
-            logger.binmode
-            logger.sync = true
-          end
-        when IO, StringIO
-          loggers[output_log] = output_log
+    def build_logger(log)
+      case log
+      when String
+        FileUtils.mkdir_p(File.dirname(log))
+        File.open(log, 'a+').tap do |logger|
+          logger.binmode
+          logger.sync = true
         end
+      when IO, StringIO
+        log
       end
     end
   end
