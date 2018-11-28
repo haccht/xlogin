@@ -112,10 +112,7 @@ module Xlogin
         instance_eval(&process)
         line += _waitfor(*args, &block)
       end
-    rescue EOFError
-    rescue StandardError => e
-      raise e
-    ensure
+
       return line
     end
 

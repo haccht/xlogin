@@ -25,7 +25,7 @@ module Xlogin
 
       begin
         session.prompt
-      rescue Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
+      rescue IOError, EOFError, Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
         session.close rescue nil
         @created -= 1
         session = try_create
