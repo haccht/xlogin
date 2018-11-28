@@ -55,7 +55,7 @@ module Xlogin
     end
 
     def prompt
-      cmd('').lines.last.chomp
+      cmd('').to_s.lines.last&.chomp
     end
 
     def duplicate
@@ -113,6 +113,8 @@ module Xlogin
         line += _waitfor(*args, &block)
       end
     rescue EOFError
+    rescue StandardError => e
+      raise e
     ensure
       return line
     end
