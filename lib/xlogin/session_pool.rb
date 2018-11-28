@@ -4,14 +4,14 @@ module Xlogin
 
   class SessionPool
 
-    DEFAULT_SIZE = 1
+    DEFAULT_POOL_SIZE = 1
 
     def initialize(args, **opts)
       @args = args
       @opts = opts
       @size = case @args
-              when String then @opts.delete(:size) || DEFAULT_SIZE
-              when Hash   then @args.delete(:size) || DEFAULT_SIZE
+              when String then @opts.delete(:pool_size) || DEFAULT_POOL_SIZE
+              when Hash   then @args.delete(:pool_size) || DEFAULT_POOL_SIZE
               end
 
       @mutex = Mutex.new
