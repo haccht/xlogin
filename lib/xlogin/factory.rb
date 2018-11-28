@@ -8,8 +8,9 @@ module Xlogin
     include Singleton
 
     def initialize
-      @inventory = Hash.new
-      @templates = Hash.new
+      @inventory    = Hash.new
+      @templates    = Hash.new
+      @session_pool = Hash.new
     end
 
     def set_inventory(**opts)
@@ -49,16 +50,17 @@ module Xlogin
 
     def build(type:, **opts)
       template = get_template(type)
-      if opts[:uri]
-        template.build(opts[:uri], **opts)
-      else
-        scheme   = opts[:scheme]
-        address  = opts.values_at(:host, :port).compact.join(':')
-        userinfo = opts[:userinfo]
-        userinfo ||= opts.values_at(:username, :password).compact.join(':')
+      template.build(uri(opts), **opts)
+    end
 
-        template.build("#{scheme}://" + [userinfo, address].compact.join('@'), **opts)
-      end
+    def build_pool(args, **opts)
+      uri = case args
+            when Hash   then uri(args)
+            when String then uri(get_inventory(args))
+            else return
+            end
+
+      @session_pool[uri] ||= Xlogin::SessionPool.new(args, **opts)
     end
 
     def build_from_hostname(args, **opts)
@@ -68,8 +70,16 @@ module Xlogin
       build(hostinfo.merge(name: args, **opts))
     end
 
-    def build_pool(args, **opts)
-      Xlogin::SessionPool.new(args, **opts)
+    private
+    def uri(**opts)
+      return opts[:uri] if opts.key?(:uri)
+
+      scheme   = opts[:scheme]
+      address  = opts.values_at(:host, :port).compact.join(':')
+      userinfo = opts[:userinfo]
+      userinfo ||= opts.values_at(:username, :password).compact.join(':')
+
+      "#{scheme}://" + [userinfo, address].compact.join('@')
     end
 
   end
