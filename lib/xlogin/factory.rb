@@ -60,7 +60,8 @@ module Xlogin
             else return
             end
 
-      @session_pool[uri] ||= Xlogin::SessionPool.new(args, **opts)
+      param = opts.map { |k, v| "#{k}=#{v}" }.join('&')
+      @session_pool["#{uri}?#{param}"] ||= Xlogin::SessionPool.new(args, **opts)
     end
 
     def build_from_hostname(args, **opts)
@@ -78,6 +79,7 @@ module Xlogin
       address  = opts.values_at(:host, :port).compact.join(':')
       userinfo = opts[:userinfo]
       userinfo ||= opts.values_at(:username, :password).compact.join(':')
+      raise SessionError.new("Invalid target: '#{opts}'") unless opts[:scheme] && opts[:host]
 
       "#{scheme}://" + [userinfo, address].compact.join('@')
     end
