@@ -66,9 +66,9 @@ module Xlogin
 
         config.hostlist  = Xlogin.list(*host.to_s.split(/\s+/))
         raise "No host found: `#{host}`" if config.hostlist.empty?
-      #rescue => e
-      # $stderr.puts e, '', parser
-      # exit 1
+      rescue => e
+        $stderr.puts e, '', parser
+        exit 1
       end
 
       config
