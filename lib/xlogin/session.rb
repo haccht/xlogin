@@ -84,7 +84,7 @@ module Xlogin
     end
 
     def enable_log(log = $stdout)
-      @loggers.update(log => build_loggers(log))
+      @loggers.update(log => build_logger(log))
       if block_given?
         yield
         disable_log(log)
