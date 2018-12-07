@@ -27,11 +27,10 @@ module Xlogin
 
     def with
       session = deq
-
       begin
         session.prompt
       rescue IOError, EOFError, Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
-        destroy(session)
+        destroy session
         session = try_create
       end
 
@@ -43,7 +42,7 @@ module Xlogin
     def close
       while @queue.empty?
         session, _ = @queue.deq
-        destroy(session)
+        destroy session
       end
     end
 
@@ -59,7 +58,7 @@ module Xlogin
     def enq(session)
       timer = Thread.new do
         sleep @idle * 1.2
-        destroy(session)
+        session.close rescue nil
       end
 
       @queue.enq [session, timer]
