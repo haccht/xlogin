@@ -5,18 +5,23 @@ module Xlogin
   class SessionPool
 
     DEFAULT_POOL_SIZE = 1
+    DEFAULT_POOL_IDLE = 60
 
     def initialize(args, **opts)
       @args = args
       @opts = opts
-      @size = case @args
-              when String then @opts.delete(:pool_size) || DEFAULT_POOL_SIZE
-              when Hash   then @args.delete(:pool_size) || DEFAULT_POOL_SIZE
-              end
+
+      case @args
+      when String
+        @size = @opts.destroy(:pool_size) || DEFAULT_POOL_SIZE
+        @idle = @opts.destroy(:pool_idle) || DEFAULT_POOL_IDLE
+      when Hash
+        @size = @args.destroy(:pool_size) || DEFAULT_POOL_SIZE
+        @idle = @args.destroy(:pool_idle) || DEFAULT_POOL_IDLE
+      end
 
       @mutex = Mutex.new
       @queue = Queue.new
-
       @created  = 0
     end
 
@@ -26,8 +31,7 @@ module Xlogin
       begin
         session.prompt
       rescue IOError, EOFError, Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
-        session.close rescue nil
-        @created -= 1
+        destroy(session)
         session = try_create
       end
 
@@ -36,15 +40,29 @@ module Xlogin
       enq session
     end
 
+    def close
+      while @queue.empty?
+        session, _ = @queue.deq
+        destroy(session)
+      end
+    end
+
     private
     def deq
-      session = try_create
-      session = @queue.deq unless session
+      unless session = try_create
+        session, timer = @queue.deq
+        timer.kill
+      end
       session
     end
 
     def enq(session)
-      @queue.enq session
+      timer = Thread.new do
+        sleep @idle * 1.2
+        destroy(session)
+      end
+
+      @queue.enq [session, timer]
     end
 
     def try_create
@@ -53,6 +71,13 @@ module Xlogin
 
         @created += 1
         Xlogin.get(@args, **@opts)
+      end
+    end
+
+    def destroy(session)
+      @mutex.synchronize do
+        session.close rescue nil
+        @created -= 1
       end
     end
 
