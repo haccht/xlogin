@@ -13,11 +13,11 @@ module Xlogin
 
       case @args
       when String
-        @size = @opts.destroy(:pool_size) || DEFAULT_POOL_SIZE
-        @idle = @opts.destroy(:pool_idle) || DEFAULT_POOL_IDLE
+        @size = @opts.delete(:pool_size) || DEFAULT_POOL_SIZE
+        @idle = @opts.delete(:pool_idle) || DEFAULT_POOL_IDLE
       when Hash
-        @size = @args.destroy(:pool_size) || DEFAULT_POOL_SIZE
-        @idle = @args.destroy(:pool_idle) || DEFAULT_POOL_IDLE
+        @size = @args.delete(:pool_size) || DEFAULT_POOL_SIZE
+        @idle = @args.delete(:pool_idle) || DEFAULT_POOL_IDLE
       end
 
       @mutex = Mutex.new
