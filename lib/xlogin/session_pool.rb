@@ -7,6 +7,8 @@ module Xlogin
     DEFAULT_POOL_SIZE = 1
     DEFAULT_POOL_IDLE = 60
 
+    attr_reader :size, :idle
+
     def initialize(args, **opts)
       @args = args
       @opts = opts
@@ -25,13 +27,21 @@ module Xlogin
       @created  = 0
     end
 
+    def size=(val)
+      @mutex.synchronize { @size = val }
+    end
+
+    def idle=(val)
+      @mutex.synchronize { @idle = val }
+    end
+
     def with
       session = deq
       begin
         session.prompt
       rescue IOError, EOFError, Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
         destroy session
-        session = try_create
+        session = deq
       end
 
       Thread.handle_interrupt(Exception => :immediate) { yield session }
@@ -57,7 +67,7 @@ module Xlogin
 
     def enq(session)
       timer = Thread.new do
-        sleep @idle * 1.2
+        sleep @idle
         session.close rescue nil
       end
 
