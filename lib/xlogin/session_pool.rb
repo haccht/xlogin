@@ -66,9 +66,9 @@ module Xlogin
     end
 
     def enq(session)
-      timer = Thread.new do
+      timer = Thread.new(session) do |s|
         sleep @idle
-        session.close rescue nil
+        s.close rescue nil
       end
 
       @queue.enq [session, timer]
