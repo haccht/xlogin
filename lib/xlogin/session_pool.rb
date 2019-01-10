@@ -1,3 +1,4 @@
+require 'time'
 require 'thread'
 
 module Xlogin
@@ -51,7 +52,7 @@ module Xlogin
 
     def close
       while @queue.empty?
-        session, _ = @queue.deq
+        session, _, _ = @queue.deq
         destroy session
       end
     end
@@ -65,19 +66,24 @@ module Xlogin
         end
       end
 
-      session, timer = @queue.deq
-      timer.kill
+      session, created, cleaner = @queue.deq
+      if Time.now - created > @idle
+        destroy session
+        return deq
+      end
 
+      cleaner.kill
       session
     end
 
     def enq(session)
-      timer = Thread.new(session) do |s|
-        sleep @idle
+      created = Time.now
+      cleaner = Thread.new(session) do |s|
+        sleep @idle * 2
         s.close rescue nil
       end
 
-      @queue.enq [session, timer]
+      @queue.enq [session, created, cleaner]
     end
 
     def destroy(session)
