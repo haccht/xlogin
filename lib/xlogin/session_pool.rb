@@ -63,23 +63,21 @@ module Xlogin
           @created += 1
           return Xlogin.get(@args, **@opts)
         end
-
-        session, timer = @queue.deq
-        timer.kill
-
-        return session
       end
+
+      session, timer = @queue.deq
+      timer.kill
+
+      session
     end
 
     def enq(session)
-      @mutex.synchronize do
-        timer = Thread.new(session) do |s|
-          sleep @idle
-          s.close rescue nil
-        end
-
-        @queue.enq [session, timer]
+      timer = Thread.new(session) do |s|
+        sleep @idle
+        s.close rescue nil
       end
+
+      @queue.enq [session, timer]
     end
 
     def destroy(session)
