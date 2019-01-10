@@ -58,28 +58,27 @@ module Xlogin
 
     private
     def deq
-      unless session = try_create
+      @mutex.synchronize do
+        if @queue.empty? && @created < @size
+          @created += 1
+          return Xlogin.get(@args, **@opts)
+        end
+
         session, timer = @queue.deq
         timer.kill
+
+        return session
       end
-      session
     end
 
     def enq(session)
-      timer = Thread.new(session) do |s|
-        sleep @idle
-        s.close rescue nil
-      end
-
-      @queue.enq [session, timer]
-    end
-
-    def try_create
       @mutex.synchronize do
-        return unless @created < @size
+        timer = Thread.new(session) do |s|
+          sleep @idle
+          s.close rescue nil
+        end
 
-        @created += 1
-        Xlogin.get(@args, **@opts)
+        @queue.enq [session, timer]
       end
     end
 
