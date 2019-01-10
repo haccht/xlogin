@@ -67,7 +67,7 @@ module Xlogin
       end
 
       session, created, cleaner = @queue.deq
-      if Time.now - created < @idle
+      if Time.now - created > @idle
         destroy session
         return deq
       end
