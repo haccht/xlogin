@@ -1,3 +1,4 @@
+require 'addressable/uri'
 require 'singleton'
 require 'xlogin/template'
 
@@ -7,28 +8,21 @@ module Xlogin
     include Singleton
 
     def initialize
-      @inventory = Hash.new
-      @templates = Hash.new
+      @inventory    = Hash.new
+      @templates    = Hash.new
+      @session_pool = Hash.new
     end
 
-    def source(*files)
-      files.compact.each do |file|
-        raise SessionError.new("Inventory file not found: #{file}") unless File.exist?(file)
-        instance_eval(IO.read(file)) if File.exist?(file)
-      end
+    def set_inventory(**opts)
+      return unless name = opts[:name]
+      @inventory[name] = (get_inventory(name) || {}).merge(opts)
     end
 
-    def set_info(**opts)
-      name = opts[:name]
-      return unless name
-      @inventory[name] = (get_info(name) || {}).merge(opts)
-    end
-
-    def get_info(name)
+    def get_inventory(name)
       @inventory[name]
     end
 
-    def list_info(*patterns)
+    def list_inventory(*patterns)
       return @inventory.values if patterns.empty?
 
       values = patterns.map do |pattern|
@@ -39,17 +33,10 @@ module Xlogin
       values.reduce(&:&).uniq
     end
 
-    def source_template(*files)
-      files.compact.each do |file|
-        raise TemplateError.new("Template file not found: #{file}") unless File.exist?(file)
-        name = File.basename(file, '.rb').scan(/\w+/).join('_')
-        set_template(name, IO.read(file)) if File.exist?(file)
-      end
-    end
-
-    def set_template(name, text)
+    def set_template(name, text = nil, &block)
       template = get_template(name)
-      template.instance_eval(text)
+      template.instance_eval(text)   if text
+      template.instance_eval(&block) if block
       @templates[name.to_s.downcase] = template
     end
 
@@ -61,28 +48,40 @@ module Xlogin
       @templates.keys
     end
 
-    def build(type:, uri:, **opts)
+    def build(type:, **opts)
       template = get_template(type)
-      template.build(uri, **opts)
+      template.build(uri(opts), **opts)
     end
 
-    def build_from_hostname(hostname, **opts)
-      hostinfo = get_info(hostname)
-      raise Xlogin::SessionError.new("Host not found: '#{hostname}'") unless hostinfo
+    def build_pool(args, **opts)
+      uri = case args
+            when Hash   then uri(args)
+            when String then uri(get_inventory(args))
+            else return
+            end
 
-      build(hostinfo.merge(name: hostname, **opts))
+      param = opts.map { |k, v| "#{k}=#{v}" }.join('&')
+      @session_pool["#{uri}?#{param}"] ||= Xlogin::SessionPool.new(args, **opts)
     end
 
-    def method_missing(method_name, *args, &block)
-      super unless caller_locations.first.label == 'block in source' and args.size >= 2
+    def build_from_hostname(args, **opts)
+      hostinfo = get_inventory(args)
+      raise SessionError.new("Host not found: '#{args}'") unless hostinfo
 
-      type = method_name.to_s.downcase
-      name = args.shift
-      uri  = args.shift
-      opts = args.shift || {}
+      build(hostinfo.merge(name: args, **opts))
+    end
 
-      super if [type, name, uri].any? { |e| e.nil? }
-      set_info(type: type, name: name, uri: uri, **opts)
+    private
+    def uri(**opts)
+      return opts[:uri] if opts.key?(:uri)
+
+      scheme   = opts[:scheme]
+      address  = opts.values_at(:host, :port).compact.join(':')
+      userinfo = opts[:userinfo]
+      userinfo ||= opts.values_at(:username, :password).compact.join(':')
+      raise SessionError.new("Invalid target: '#{opts}'") unless opts[:scheme] && opts[:host]
+
+      "#{scheme}://" + [userinfo, address].compact.join('@')
     end
 
   end

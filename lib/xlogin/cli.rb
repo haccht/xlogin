@@ -61,7 +61,7 @@ module Xlogin
 
           authorize(config.authorize)
           source(File.expand_path(config.inventory, ENV['PWD']))
-          load_templates(*config.templates.map { |file| File.expand_path(file, ENV['PWD']) })
+          template_file(*config.templates.map { |file| File.expand_path(file, ENV['PWD']) })
         end
 
         config.hostlist  = Xlogin.list(*host.to_s.split(/\s+/))
@@ -75,9 +75,7 @@ module Xlogin
     end
 
     def list(config)
-      wid1 = config.hostlist.map { |e| e[:type].length }.max
-      wid2 = config.hostlist.map { |e| e[:name].length }.max
-      list = config.hostlist.map { |e| "#{e[:type].to_s.ljust(wid1)} #{e[:name].to_s.ljust(wid2)} #{e[:uri]}" }.sort
+      list = config.hostlist.map { |e| e[:name] }.uniq.sort
       $stdout.puts list
     end
 

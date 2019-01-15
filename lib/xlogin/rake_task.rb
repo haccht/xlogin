@@ -17,7 +17,7 @@ module Xlogin
         description = Rake.application.last_description
         task 'all' => hostnames unless opts[:bundle] == false
 
-        description = opts[:desc] if opts.key?(:desc)
+        description = opts[:desc]
         hostnames.each do |hostname|
           desc description
           RakeTask.new(hostname, &block)
@@ -32,6 +32,8 @@ module Xlogin
     attr_accessor :log
     attr_accessor :silent
     attr_accessor :fail_on_error
+
+    @@graceful_shutdown = false
 
     def initialize(name)
       @name     = name
@@ -66,12 +68,14 @@ module Xlogin
       if lock
         task(name => lock)
         file(lock) do
+          next if @@graceful_shutdown
           run_task
           mkdir_p(File.dirname(lock), verbose: Rake.application.options.trace)
           touch(lock, verbose: Rake.application.options.trace)
         end
       else
         task(name) do
+          next if @@graceful_shutdown
           run_task
         end
       end
@@ -91,9 +95,10 @@ module Xlogin
 
         printf($stdout, buffer.string) if !silent && Rake.application.options.always_multitask
       rescue => e
-        printf($stderr, buffer.string) if !silent && Rake.application.options.always_multitask
-        printf($stderr, "[ERROR] Xlogin - #{e}\n")
-        raise e if fail_on_error
+        output($stderr, buffer.string) if !silent && Rake.application.options.always_multitask
+        output($stderr, "[ERROR] Xlogin - #{e}\n")
+
+        @@graceful_shutdown = true if fail_on_error
       end
     end
 

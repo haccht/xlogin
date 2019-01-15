@@ -1,80 +1,98 @@
+require 'time'
 require 'thread'
 
 module Xlogin
 
   class SessionPool
 
-    DEFAULT_SIZE = 1
-    DEFAULT_IDLE = false
+    DEFAULT_POOL_SIZE = 1
+    DEFAULT_POOL_IDLE = 60
+
+    attr_reader :size, :idle
 
     def initialize(args, **opts)
-      @args  = args
-      @opts  = opts
+      @args = args
+      @opts = opts
+
+      case @args
+      when String
+        @size = @opts.delete(:pool_size) || DEFAULT_POOL_SIZE
+        @idle = @opts.delete(:pool_idle) || DEFAULT_POOL_IDLE
+      when Hash
+        @size = @args.delete(:pool_size) || DEFAULT_POOL_SIZE
+        @idle = @args.delete(:pool_idle) || DEFAULT_POOL_IDLE
+      end
 
       @mutex = Mutex.new
       @queue = Queue.new
-
       @created  = 0
-      @watchdog = Hash.new
     end
 
-    def size
-      case @args
-      when String then @opts[:size] || DEFAULT_SIZE
-      when Hash   then @args[:size] || DEFAULT_SIZE
-      end
+    def size=(val)
+      @mutex.synchronize { @size = val }
     end
 
-    def idle
-      case @args
-      when String then @opts[:idle] || DEFAULT_IDLE
-      when Hash   then @args[:idle] || DEFAULT_IDLE
-      end
+    def idle=(val)
+      @mutex.synchronize { @idle = val }
     end
 
     def with
       session = deq
       begin
-        Thread.handle_interrupt(Exception => :immediate) { yield session }
-      ensure
-        enq(session)
+        session.prompt
+      rescue IOError, EOFError, Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
+        destroy session
+        session = deq
+      end
+
+      Thread.handle_interrupt(Exception => :immediate) { yield session }
+    ensure
+      enq session
+    end
+
+    def close
+      while @queue.empty?
+        session, _, _ = @queue.deq
+        destroy session
       end
     end
 
     private
     def deq
-      session = try_create
-      unless session
-        session, updated = @queue.deq
-        session = session.duplicate if idle && updated + idle.to_f < Time.now
+      @mutex.synchronize do
+        if @queue.empty? && @created < @size
+          @created += 1
+          return Xlogin.get(@args, **@opts)
+        end
       end
 
+      session, created, cleaner = @queue.deq
+      if Time.now - created > @idle
+        destroy session
+        return deq
+      end
+
+      cleaner.kill
       session
     end
 
     def enq(session)
-      @mutex.synchronize { update_watchdog(session) }
-      @queue.enq [session, Time.now]
+      created = Time.now
+      cleaner = Thread.new(session) do |s|
+        sleep @idle * 2
+        s.close rescue nil
+      end
+
+      @queue.enq [session, created, cleaner]
     end
 
-    def try_create
+    def destroy(session)
       @mutex.synchronize do
-        return unless @created < size
-
-        session = Xlogin.get(@args, **@opts)
-        update_watchdog(session)
-
-        @created += 1
-        session
+        session.close rescue nil
+        @created -= 1
       end
     end
 
-    def update_watchdog(session)
-      return unless idle
-
-      @watchdog[session].tap { |th| th.kill if th }
-      @watchdog[session] = Thread.new(session) { |s| sleep(idle.to_f + 1) && s.close }
-    end
   end
 
 end
