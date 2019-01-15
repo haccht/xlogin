@@ -1,3 +1,4 @@
+require 'time'
 require 'rake'
 require 'rake/tasklib'
 require 'ostruct'
@@ -88,18 +89,21 @@ module Xlogin
         @runner.call(session)
         session.close if session
 
-        output($stdout, buffer.string) if !silent && Rake.application.options.always_multitask
+        printf($stdout, buffer.string) if !silent && Rake.application.options.always_multitask
       rescue => e
-        output($stderr, buffer.string) if !silent && Rake.application.options.always_multitask
-        output($stderr, "[ERROR] Xlogin - #{e}\n")
+        printf($stderr, buffer.string) if !silent && Rake.application.options.always_multitask
+        printf($stderr, "[ERROR] Xlogin - #{e}\n")
         raise e if fail_on_error
       end
     end
 
-    def output(fp, text)
-      prefix = (Rake.application.options.always_multitask)? "#{name}\t|" : ""
-      lines  = text.lines.map { |line| "#{prefix}#{line.strip}\n" }
-      lines.each { |line| $stdout.print line }
+    def printf(fp, text)
+      time = Time.now.iso8061
+      text.each_line do |line|
+        fp.print "#{time} "
+        fp.print "#{name}\t" if Rake.application.options.always_multitask
+        fp.print "|#{line.chomp.gsub(/^\s*\r/, '')}\n"
+      end
     end
 
   end
