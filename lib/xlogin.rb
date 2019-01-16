@@ -61,11 +61,11 @@ module Xlogin
     end
 
     def source(*source_files, &block)
-      return source_files(*source_files) unless block
+      return source_file(*source_files) unless block
       instance_eval(&block) unless source_files.empty?
     end
 
-    def source_files(*source_files)
+    def source_file(*source_files)
       source_files.compact.each do |file|
         raise SessionError.new("Inventory file not found: #{file}") unless File.exist?(file)
         instance_eval(IO.read(file), file) if File.exist?(file)
