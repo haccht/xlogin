@@ -73,13 +73,13 @@ module Xlogin
 
     private
     def uri(**opts)
-      return opts[:uri] if opts.key?(:uri)
-
-      scheme   = opts[:scheme]
-      address  = opts.values_at(:host, :port).compact.join(':')
-      userinfo = opts[:userinfo]
-      userinfo ||= opts.values_at(:username, :password).compact.join(':')
+      return opts[:uri].strip if opts.key?(:uri)
       raise SessionError.new("Invalid target: '#{opts}'") unless opts[:scheme] && opts[:host]
+
+      scheme   = opts[:scheme].strip
+      address  = opts.values_at(:host, :port).compact.map(&:strip).join(':')
+      userinfo = opts[:userinfo].strip
+      userinfo ||= opts.values_at(:username, :password).compact.map(&:strip).join(':')
 
       "#{scheme}://" + [userinfo, address].compact.join('@')
     end
