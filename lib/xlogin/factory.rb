@@ -15,7 +15,7 @@ module Xlogin
     end
 
     def set_inventory(name, **opts)
-      @inventory[name] = (get_inventory(name) || {}).merge(opts)
+      @inventory[name] = (get_inventory(name) || {name: name}).merge(opts)
     end
 
     def get_inventory(name)
