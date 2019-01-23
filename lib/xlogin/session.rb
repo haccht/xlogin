@@ -107,8 +107,8 @@ module Xlogin
     def _waitfor(*args, &block)
       __waitfor = method(:waitfor).super_method
       line = __waitfor.call(*args) do |recv|
+        output_log(recv)
         block.call(recv) if block
-        @loggers.each { |_, logger| logger.syswrite(text) if logger }
       end
 
       _, process = @template.prompt.find { |r, p| r =~ line && p }
@@ -118,6 +118,10 @@ module Xlogin
       end
 
       return line
+    end
+
+    def output_log(text)
+      @loggers.each { |_, logger| logger.syswrite(text) if logger }
     end
 
     def ssh_tunnel(gateway)
