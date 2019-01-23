@@ -5,21 +5,18 @@ require 'ostruct'
 require 'stringio'
 
 module Xlogin
-
   class RakeTask < Rake::TaskLib
 
     class << self
       include Rake::DSL
 
-      def generate(*target, **opts, &block)
-        hostnames = target.flat_map { |e| Xlogin.list(e) }.map { |e| e[:name] }
-
+      def generate(*patterns, **opts, &block)
         description = Rake.application.last_description
-        task 'all' => hostnames unless opts[:bundle] == false
+        hostnames   = Xlogin.list(*patterns).map { |e| e[:name] }
 
-        description = opts[:desc]
+        task 'all' => hostnames if !!opts[:all]
         hostnames.each do |hostname|
-          desc description
+          desc "#{description} - #{hostname}" if !!opts[:desc]
           RakeTask.new(hostname, &block)
         end
 
@@ -27,7 +24,6 @@ module Xlogin
     end
 
     attr_reader   :name
-    attr_reader   :taskname
     attr_accessor :lock
     attr_accessor :log
     attr_accessor :silent
@@ -37,9 +33,7 @@ module Xlogin
 
     def initialize(name)
       @name     = name
-      @taskname = [*Rake.application.current_scope.to_a.reverse, name].join(':')
       @runner   = nil
-      @config   = OpenStruct.new
       @silent ||= Rake.application.options.silent
       @fail_on_error = true
 
@@ -47,21 +41,17 @@ module Xlogin
       define
     end
 
+    def name_with_scope
+      [*Rake.application.current_scope.to_a.reverse, name].join(':')
+    end
+
     def run(&block)
       @runner = block
     end
-
-    def method_missing(name, *args, &block)
-      super(name, *args, &block) unless name.to_s =~ /^\w+=$/
-      @config.send(name, *args)
-    end
+    alias_method :start, :run
 
     private
     def define
-      description = Rake.application.last_description
-      description = "#{description} - #{name}" if description
-      desc description
-
       mkdir_p(File.dirname(log),  verbose: Rake.application.options.trace) if log
       mkdir_p(File.dirname(lock), verbose: Rake.application.options.trace) if lock
 
@@ -70,7 +60,6 @@ module Xlogin
         file(lock) do
           next if @@graceful_shutdown
           run_task
-          mkdir_p(File.dirname(lock), verbose: Rake.application.options.trace)
           touch(lock, verbose: Rake.application.options.trace)
         end
       else
@@ -88,18 +77,16 @@ module Xlogin
       loggers << buffer  if !silent &&  Rake.application.options.always_multitask
       loggers << $stdout if !silent && !Rake.application.options.always_multitask
 
-      begin
-        session = Xlogin.get(name, log: loggers, **@config.to_h)
-        @runner.call(session)
-        session.close if session
+      session = Xlogin.get(name, log: loggers)
+      @runner.call(session)
+      session.close rescue nil
 
-        printf($stdout, buffer.string) if !silent && Rake.application.options.always_multitask
-      rescue => e
-        output($stderr, buffer.string) if !silent && Rake.application.options.always_multitask
-        output($stderr, "[ERROR] Xlogin - #{e}\n")
+      printf($stdout, buffer.string) if !silent && Rake.application.options.always_multitask
+    rescue => e
+      output($stderr, buffer.string) if !silent && Rake.application.options.always_multitask
+      output($stderr, "[ERROR] #{e}\n")
 
-        @@graceful_shutdown = true if fail_on_error
-      end
+      @@graceful_shutdown = true if fail_on_error
     end
 
     def printf(fp, text)
@@ -112,5 +99,4 @@ module Xlogin
     end
 
   end
-
 end

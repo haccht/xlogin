@@ -1,5 +1,6 @@
 require 'addressable/uri'
 require 'singleton'
+require 'xlogin/session_pool'
 require 'xlogin/template'
 
 module Xlogin
@@ -13,8 +14,7 @@ module Xlogin
       @session_pool = Hash.new
     end
 
-    def set_inventory(**opts)
-      return unless name = opts[:name]
+    def set_inventory(name, **opts)
       @inventory[name] = (get_inventory(name) || {}).merge(opts)
     end
 
@@ -34,14 +34,14 @@ module Xlogin
     end
 
     def set_template(name, text = nil, &block)
-      template = get_template(name)
+      template = get_template(name) || Xlogin::Template.new(name)
       template.instance_eval(text)   if text
       template.instance_eval(&block) if block
       @templates[name.to_s.downcase] = template
     end
 
     def get_template(name)
-      @templates[name.to_s.downcase] ||= Xlogin::Template.new(name)
+      @templates[name.to_s.downcase]
     end
 
     def list_templates
@@ -50,6 +50,8 @@ module Xlogin
 
     def build(type:, **opts)
       template = get_template(type)
+      raise TemplateError.new("Template not found: '#{type}'") unless template
+
       template.build(uri(opts), **opts)
     end
 
@@ -73,15 +75,16 @@ module Xlogin
 
     private
     def uri(**opts)
-      return opts[:uri].strip if opts.key?(:uri)
-      raise SessionError.new("Invalid target: '#{opts}'") unless opts[:scheme] && opts[:host]
+      return Addressable::URI.parse(opts[:uri].strip) if opts.key?(:uri)
 
       scheme   = opts[:scheme].strip
       address  = opts.values_at(:host, :port).compact.map(&:strip).join(':')
       userinfo = opts[:userinfo].strip
       userinfo ||= opts.values_at(:username, :password).compact.map(&:strip).join(':')
 
-      "#{scheme}://" + [userinfo, address].compact.join('@')
+      Addressable::URI.parse("#{scheme}://" + [userinfo, address].compact.join('@'))
+    rescue
+      raise SessionError.new("Invalid target - '#{opts}'")
     end
 
   end

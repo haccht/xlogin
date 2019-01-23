@@ -1,4 +1,3 @@
-require 'addressable/uri'
 require 'xlogin/ssh'
 require 'xlogin/telnet'
 
@@ -10,7 +9,6 @@ module Xlogin
     RESERVED_METHODS = %i( login logout enable disable delegate )
 
     attr_reader :name
-    attr_reader :methods
 
     def initialize(name)
       @name    = name
@@ -35,20 +33,15 @@ module Xlogin
       @methods[name] = block
     end
 
-    def interrupt(&block)
+    def interrupt!(&block)
       return @interrupt unless block
       @interrupt = block
     end
 
     def build(uri, **opts)
-      uri   = Addressable::URI.parse(uri.to_s)
       klass = Class.new(Xlogin.const_get(uri.scheme.capitalize))
       klass.class_exec(@methods) do |methods|
         methods.each do |name, block|
-          if name == :enable
-            define_method(name) { |*args| instance_exec([*args, opts[name]].first, &block) }
-            next
-          end
           define_method(name, &block)
         end
       end
@@ -57,8 +50,9 @@ module Xlogin
     end
 
     def method_missing(name, *, &block)
-      super unless RESERVED_METHODS.include?(name) and block_given?
+      super unless RESERVED_METHODS.include?(name)
       bind(name) { |*args| instance_exec(*args, &block) }
     end
+
   end
 end

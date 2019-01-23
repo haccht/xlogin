@@ -1,7 +1,6 @@
 $:.unshift File.dirname(__FILE__)
 
 require 'xlogin/factory'
-require 'xlogin/session_pool'
 require 'xlogin/version'
 
 module Xlogin
@@ -16,18 +15,19 @@ module Xlogin
       @factory ||= Xlogin::Factory.instance
     end
 
+    def list(*patterns)
+      factory.list_inventory(*patterns)
+    end
+
     def get(args, **opts, &block)
       session = case args
                 when Hash   then factory.build(**args.merge(**opts))
                 when String then factory.build_from_hostname(args, **opts)
+                else return
                 end
 
       return session unless block
       begin block.call(session) ensure session.close end
-    end
-
-    def list(*patterns)
-      factory.list_inventory(*patterns)
     end
 
     def get_pool(args, **opts, &block)
@@ -54,10 +54,6 @@ module Xlogin
     private
     def authorize(boolean = true, &block)
       @authorized = boolean == true || (block && block.call == true)
-    end
-
-    def register(**args)
-      factory.set_inventory(**args)
     end
 
     def source(*source_files, &block)
@@ -99,7 +95,7 @@ module Xlogin
       opts = args[2] || {}
 
       super unless args.size == 2 || args.size == 3
-      register(type: type, name: name, uri: uri, **opts)
+      factory.set_inventory(name, type: type, uri: uri, **opts)
     end
 
   end

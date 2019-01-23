@@ -2,7 +2,6 @@ require 'time'
 require 'thread'
 
 module Xlogin
-
   class SessionPool
 
     DEFAULT_POOL_SIZE = 1
@@ -14,14 +13,8 @@ module Xlogin
       @args = args
       @opts = opts
 
-      case @args
-      when String
-        @size = @opts.delete(:pool_size) || DEFAULT_POOL_SIZE
-        @idle = @opts.delete(:pool_idle) || DEFAULT_POOL_IDLE
-      when Hash
-        @size = @args.delete(:pool_size) || DEFAULT_POOL_SIZE
-        @idle = @args.delete(:pool_idle) || DEFAULT_POOL_IDLE
-      end
+      @size = DEFAULT_POOL_SIZE
+      @idle = DEFAULT_POOL_IDLE
 
       @mutex = Mutex.new
       @queue = Queue.new
@@ -39,7 +32,7 @@ module Xlogin
     def with
       session = deq
       begin
-        session.prompt
+        session.prompt # confirm that the session is still alive
       rescue IOError, EOFError, Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
         destroy session
         session = deq
@@ -94,5 +87,4 @@ module Xlogin
     end
 
   end
-
 end

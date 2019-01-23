@@ -1,5 +1,4 @@
 module Xlogin
-
   class ExpectationError < StandardError
 
     def initialize(expect, actual)
@@ -48,5 +47,4 @@ module Xlogin
     end
 
   end
-
 end

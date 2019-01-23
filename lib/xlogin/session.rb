@@ -21,8 +21,6 @@ module Xlogin
                 when 'telnet' then 23
                 end
 
-      raise SessionError.new("Invalid URI - '#{uri}'") unless @host && @port
-
       @name     = opts[:name] || @host
       @config   = OpenStruct.new(opts)
       @template = template
@@ -54,6 +52,11 @@ module Xlogin
       @template.name
     end
 
+    def enable(*args)
+      return super(*args) unless args.empty?
+      super(@config.enable)
+    end
+
     def prompt
       cmd('').to_s.lines.last&.chomp
     end
@@ -63,17 +66,18 @@ module Xlogin
     end
 
     def puts(*args, &block)
-      args = [instance_exec(*args, &@template.interrupt)].flatten if @template.interrupt
-      super(*args, &block)
+      args = [instance_exec(*args, &@template.interrupt!)].flatten.compact if @template.interrupt!
+      super(*args, &block) unless args.empty?
     end
 
     def waitfor(*args, &block)
+      args = [Regexp.union(*@template.prompt.map(&:first))] if args.empty?
       @mutex.synchronize { _waitfor(*args, &block) }
     end
 
     def close
       @mutex.synchronize do
-        @loggers.values.each do |logger|
+        @loggers.each do |_, logger|
           next if logger.nil? || [$stdout, $stderr].include?(logger)
           logger.close
         end
@@ -101,10 +105,10 @@ module Xlogin
 
     private
     def _waitfor(*args, &block)
-      args << Regexp.union(*@template.prompt.map(&:first)) if args.empty?
-      line = method(:waitfor).super_method.call(*args) do |recv|
+      __waitfor = method(:waitfor).super_method
+      line = __waitfor.call(*args) do |recv|
         block.call(recv) if block
-        output_log(recv)
+        @loggers.each { |_, logger| logger.syswrite(text) if logger }
       end
 
       _, process = @template.prompt.find { |r, p| r =~ line && p }
@@ -133,10 +137,6 @@ module Xlogin
       end
     end
 
-    def output_log(text)
-      @loggers.values.each { |logger| logger.syswrite(text) if logger }
-    end
-
     def build_logger(log)
       case log
       when String
@@ -149,5 +149,6 @@ module Xlogin
         log
       end
     end
+
   end
 end
