@@ -10,7 +10,6 @@ module Xlogin
   module SessionModule
 
     attr_accessor :name
-    attr_accessor :config
 
     def initialize(template, uri, **opts)
       @uri  = uri
@@ -50,11 +49,6 @@ module Xlogin
 
     def type
       @template.name
-    end
-
-    def enable(*args)
-      return super(*args) unless args.empty?
-      super(@config.enable)
     end
 
     def prompt
