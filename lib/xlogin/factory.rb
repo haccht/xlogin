@@ -25,12 +25,15 @@ module Xlogin
     def list_inventory(*patterns)
       return @inventory.values if patterns.empty?
 
-      values = patterns.map do |pattern|
-        key, val = pattern.to_s.split(':')
-        key, val = 'name', key if val.nil?
-        val.split(',').map { |e| @inventory.values.select { |info| File.fnmatch(e, info[key.to_sym]) } }.reduce(&:|)
+      values1 = patterns.map do |pattern|
+				values2 = pattern.split(',').map do |entry|
+					key, val = entry.to_s.split(':')
+					key, val = 'name', key if val.nil?
+					@inventory.values.select { |e| File.fnmatch(val, e[key.to_sym]) }
+				end
+				values2.reduce(&:&)
       end
-      values.reduce(&:&).uniq
+      values1.reduce(&:|)
     end
 
     def set_template(name, text = nil, &block)
