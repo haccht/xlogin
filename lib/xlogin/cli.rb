@@ -4,7 +4,6 @@ require 'optparse'
 require 'ostruct'
 require 'parallel'
 require 'readline'
-require 'socket'
 require 'stringio'
 
 module Xlogin
@@ -15,7 +14,6 @@ module Xlogin
 
     def self.run(args = ARGV)
       config = getopts(args)
-			p config
       client = Xlogin::CLI.new
 			client.method(config.task.first).call(config)
     end
@@ -37,24 +35,23 @@ module Xlogin
 			parser.on('-T PATH',        '--template',     String, 'The PATH to the template dir (default: $HOME/.xlogin.d).')   { |v| config.template_dir = v }
 			parser.on('-L [DIRECTORY]', '--log-dir',      String, 'The PATH to the log dir (default: $PWD).')                   { |v| config.logdir = v || '.' }
 
-      parser.on('-l', '--list', TrueClass, 'List the inventory.')    { |v| config.task = [:list, nil] }
-      parser.on('-t', '--tty',  TrueClass, 'Allocate a pseudo-tty.') { |v| config.task = [:tty,  nil] }
-      parser.on('-e COMMAND', '--exec', TrueClass, 'Execute commands and quit.') { |v| config.task = [:exec, v] }
+      parser.on('-l', '--list', TrueClass, 'List the inventory.')     { |v| config.task = [:list, nil] }
+      parser.on('-t', '--tty',  TrueClass, 'Allocate a pseudo-tty.')  { |v| config.task = [:tty,  nil] }
+      parser.on('-e COMMAND', '--exec', 'Execute commands and quit.') { |v| config.task = [:exec, v] }
 
       parser.on('-j NUM', '--jobs', Integer, 'The NUM of jobs to execute in parallel(default: 1).') { |v| config.jobs = v }
       parser.on('-y',     '--assume-yes', TrueClass, 'Automatically answer yes to prompts.')        { |v| config.auth = v }
       parser.on('-E',     '--enable',     TrueClass, 'Try to gain enable priviledge.')              { |v| config.enable = v }
 
 			parser.parse!(args)
-
-			config.hosts = Xlogin.list(*args)
-			raise "No host found: `#{args}`" if config.hosts.empty?
-
 			Xlogin.configure do
 				authorize(config.auth)
 				source(File.expand_path(config.inventory, ENV['PWD']))
 				template_dir(File.expand_path(config.template_dir, ENV['PWD']))
 			end
+
+			config.hosts = Xlogin.list(*args)
+			raise "No host found: `#{args.join(', ')}`" if config.hosts.empty?
 
       return config
 		rescue => e
@@ -78,12 +75,10 @@ module Xlogin
           end
         end
 
-				# rewrite config in order to process hosts one by one
         $stdout.puts "Trying #{hostinfo[:name]}...", "Escape character is '^]'."
-        config.jobs = 1
-        config.hosts = [hostinfo]
+				tty_config = OpenStruct.new(config.to_h.merge(jobs: 1, hosts: [hostinfo]))
 
-        session, _ = exec(config)
+        session, _ = exec(tty_config)
         session.interact!
       end
     end
@@ -106,7 +101,7 @@ module Xlogin
           session = Xlogin.get(hostinfo.merge(log: loggers))
           session.enable if config.enable && hostinfo[:enable]
 
-					command_lines = ['', *config.task.last.split(';').map(&:strip)]
+					command_lines = ['', *config.task.last.to_s.split(';').map(&:strip)]
           command_lines.each { |line| session.cmd(line) }
         rescue => err
           error = err
