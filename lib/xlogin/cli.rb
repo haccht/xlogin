@@ -15,6 +15,7 @@ module Xlogin
 
     def self.run(args = ARGV)
       config = getopts(args)
+			p config
       client = Xlogin::CLI.new
 			client.method(config.task.first).call(config)
     end
