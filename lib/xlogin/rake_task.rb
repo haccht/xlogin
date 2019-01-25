@@ -14,9 +14,9 @@ module Xlogin
         description = Rake.application.last_description
         hostnames   = Xlogin.list(*patterns).map { |e| e[:name] }
 
-        task 'all' => hostnames if !!opts[:all]
+        task 'all' => hostnames unless opts[:all] == false
         hostnames.each do |hostname|
-          desc "#{description} - #{hostname}" if !!opts[:desc]
+          desc "#{description} - #{hostname}" if opts[:desc] == true
           RakeTask.new(hostname, &block)
         end
 
