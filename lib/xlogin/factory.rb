@@ -26,12 +26,12 @@ module Xlogin
       return @inventory.values if patterns.empty?
 
       values1 = patterns.map do |pattern|
-				values2 = pattern.split(',').map do |entry|
-					key, val = entry.to_s.split(':')
-					key, val = 'name', key if val.nil?
-					@inventory.values.select { |e| File.fnmatch(val, e[key.to_sym]) }
-				end
-				values2.reduce(&:&)
+        values2 = pattern.split(',').map do |entry|
+          key, val = entry.to_s.split(':')
+          key, val = 'name', key if val.nil?
+          @inventory.values.select { |e| File.fnmatch(val, e[key.to_sym]) }
+        end
+        values2.reduce(&:&)
       end
       values1.reduce(&:|)
     end
