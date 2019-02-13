@@ -83,14 +83,14 @@ module Xlogin
 
       printf($stdout, buffer.string) if !silent && Rake.application.options.always_multitask
     rescue => e
-      output($stderr, buffer.string) if !silent && Rake.application.options.always_multitask
-      output($stderr, "[ERROR] #{e}\n")
+      printf($stderr, buffer.string) if !silent && Rake.application.options.always_multitask
+      printf($stderr, "[ERROR] #{e}\n")
 
       @@graceful_shutdown = true if fail_on_error
     end
 
     def printf(fp, text)
-      time = Time.now.iso8061
+      time = Time.now.iso8601
       text.each_line do |line|
         fp.print "#{time} "
         fp.print "#{name}\t" if Rake.application.options.always_multitask

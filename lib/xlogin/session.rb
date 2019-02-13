@@ -52,7 +52,8 @@ module Xlogin
     end
 
     def prompt
-      cmd('').to_s.lines.last&.chomp
+      text = cmd('').to_s.lines.last
+      text.chomp if text
     end
 
     def duplicate
