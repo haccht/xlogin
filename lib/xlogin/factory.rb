@@ -76,6 +76,17 @@ module Xlogin
       build(hostinfo.merge(name: args, **opts))
     end
 
+    def method_missing(method_name, *args, &block)
+      super unless args.size == 2 || args.size == 3 && URI.regexp =~ args[1]
+
+      type = method_name.to_s.downcase
+      name = args[0]
+      uri  = args[1]
+      opts = args[2] || {}
+
+      set_inventory(name, type: type, uri: uri, **opts)
+    end
+
     private
     def uri(**opts)
       return Addressable::URI.parse(opts[:uri].strip) if opts.key?(:uri)

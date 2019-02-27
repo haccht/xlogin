@@ -58,13 +58,13 @@ module Xlogin
 
     def source(*source_files, &block)
       return source_file(*source_files) unless block
-      instance_eval(&block) unless source_files.empty?
+      factory.instance_eval(&block) unless source_files.empty?
     end
 
     def source_file(*source_files)
       source_files.compact.each do |file|
         raise SessionError.new("Inventory file not found: #{file}") unless File.exist?(file)
-        instance_eval(IO.read(file), file) if File.exist?(file)
+        factory.instance_eval(IO.read(file), file) if File.exist?(file)
       end
     end
 
@@ -86,16 +86,6 @@ module Xlogin
     def template_dir(*template_dirs)
       files = template_dirs.flat_map { |dir| Dir.glob(File.join(dir, '*.rb')) }
       template_file(*files)
-    end
-
-    def method_missing(method_name, *args, &block)
-      type = method_name.to_s.downcase
-      name = args[0]
-      uri  = args[1]
-      opts = args[2] || {}
-
-      super unless args.size == 2 || args.size == 3
-      factory.set_inventory(name, type: type, uri: uri, **opts)
     end
 
   end
