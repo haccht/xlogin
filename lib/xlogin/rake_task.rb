@@ -58,14 +58,12 @@ module Xlogin
       if lock
         task(name => lock)
         file(lock) do
-          next if @@graceful_shutdown
-          run_task
-          touch(lock, verbose: Rake.application.options.trace)
+          run_task unless @@graceful_shutdown
+          touch(lock, verbose: Rake.application.options.trace) unless @@graceful_shutdown
         end
       else
         task(name) do
-          next if @@graceful_shutdown
-          run_task
+          run_task unless @@graceful_shutdown
         end
       end
     end
