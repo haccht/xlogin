@@ -69,10 +69,9 @@ xlogin HOST_PATTERN [Options]
     -l, --list                       List all available devices.
     -e, --exec                       Execute commands and quit.
     -t, --tty                        Allocate a pseudo-tty.
-    -p, --port NUM                   Run as server on specified port(default: 8080).
     -j, --jobs NUM                   The NUM of jobs to execute in parallel(default: 1).
     -E, --enable                     Try to gain enable priviledge.
-    -y, --assume-yes                 Automatically answer yes to prompts.
+    -y, --assume-yes                 Automatically answer yes to any confirmation prompts.
 ~~~
 
 ## Development
