@@ -48,13 +48,13 @@ vyos	'vyos02',	'telnet://vagrant:vagrant@127.0.0.1:2201'
 Now you can login any device in your `.xloginrc` file with a command:
 
 ```sh
-xlogin vyos01
+$ xlogin vyos01
 ```
 
 And execute multiple operations with just a single command:
 
 ~~~sh
-xlogin 'vyos*' -e 'show configuration command | no-more; exit' -j 2
+$ xlogin 'vyos*' -e 'show configuration command | no-more; exit' -j 2
 ~~~
 
 Some other commandline options are:
