@@ -1,50 +1,7 @@
 # xlogin
-rancid clogin alternative.
 
-## Usage
-
-ネットワークデバイスへのログイン処理を自動化するツール群。  
-`~/.xlogin.d/`にファームウェア毎のログイン仕様(template)を記述することで自働化対象機器を任意に設定可能。
-templateの記述例は[lib/xlogin/templates](https://github.com/haccht/xlogin/tree/master/lib/xlogin/templates)を参照のこと。
-
-各個別装置毎のログインのための認証情報は`~/.xloginrc`へ記述する。  
-`.xloginrc`のフォーマットはDSL形式で下記の通り。
-
-~~~
-#hosttype	hostname	telnet_uri_scheme	options
-vyos	'vyos01',	'telnet://vagrant:vagrant@127.0.0.1:2200'
-vyos	'vyos02',	'telnet://vagrant:vagrant@127.0.0.1:2201'
-~~~
-
-下記コマンドでvyos01へ自動ログインし、プロンプトをユーザに渡す。
-
-~~~sh
-xlogin vyos01
-~~~
-
-また下記コマンドでvyos01,vyos02へ同時に自動ログインし、コマンドを一括投入する。
-
-~~~sh
-xlogin 'vyos*' -e 'show configuration command | no-more; exit' -j 2
-~~~
-
-その他のオプションは下記の通り。
-
-~~~sh
-$ xlogin -h
-xlogin HOST_PATTERN [Options]
-    -i, --inventory PATH             The PATH to the inventory file(default: $HOME/.xloginrc).
-        --template PATH              The PATH to the template file.
-    -T, --template-dir DIRECTORY     The DIRECTORY of the template files.
-    -L, --log-dir [DIRECTORY]        The DIRECTORY of the log files(default: $PWD).
-    -l, --list                       List all available devices.
-    -e, --exec                       Execute commands and quit.
-    -t, --tty                        Allocate a pseudo-tty.
-    -p, --port NUM                   Run as server on specified port(default: 8080).
-    -j, --jobs NUM                   The NUM of jobs to execute in parallel(default: 1).
-    -E, --enable                     Try to gain enable priviledge.
-    -y, --assume-yes                 Automatically answer yes to prompts.
-~~~
+rancid clogin alternative.  
+xlogin is a tool to login devices and execute series of tasks.
 
 ## Installation
 
@@ -61,6 +18,62 @@ And then execute:
 Or install it yourself as:
 
     $ gem install xlogin
+
+## Usage
+
+Write a template file that describe how to login to the specific type of device, and store it to `~/.xlogin.d/`.  
+Take vyos as an example, template file would be:
+
+```ruby
+prompt(/[$#] (?:\e\[K)?\z/n)
+
+login do |username, password|
+  waitfor(/login:\s/)    && puts(username)
+  waitfor(/Password:\s/) && puts(password)
+  waitfor
+end
+```
+
+Some other example are in [lib/xlogin/templates](https://github.com/haccht/xlogin/tree/master/lib/xlogin/templates).
+
+Beside template files, you need to prepare an inventory file `~/.xloginrc`.
+In this file, you need to write all information required to login each device.
+
+```
+#hosttype	hostname	uri scheme
+vyos	'vyos01',	'telnet://vagrant:vagrant@127.0.0.1:2200'
+vyos	'vyos02',	'telnet://vagrant:vagrant@127.0.0.1:2201'
+```
+
+Now you can login any device in your `.xloginrc` file with a command:
+
+```sh
+xlogin vyos01
+```
+
+And execute multiple operations with just a single command:
+
+~~~sh
+xlogin 'vyos*' -e 'show configuration command | no-more; exit' -j 2
+~~~
+
+Some other commandline options are:
+
+~~~sh
+$ xlogin -h
+xlogin HOST_PATTERN [Options]
+    -i, --inventory PATH             The PATH to the inventory file(default: $HOME/.xloginrc).
+        --template PATH              The PATH to the template file.
+    -T, --template-dir DIRECTORY     The DIRECTORY of the template files.
+    -L, --log-dir [DIRECTORY]        The DIRECTORY of the log files(default: $PWD).
+    -l, --list                       List all available devices.
+    -e, --exec                       Execute commands and quit.
+    -t, --tty                        Allocate a pseudo-tty.
+    -p, --port NUM                   Run as server on specified port(default: 8080).
+    -j, --jobs NUM                   The NUM of jobs to execute in parallel(default: 1).
+    -E, --enable                     Try to gain enable priviledge.
+    -y, --assume-yes                 Automatically answer yes to prompts.
+~~~
 
 ## Development
 
