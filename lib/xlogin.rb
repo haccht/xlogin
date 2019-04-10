@@ -1,5 +1,6 @@
 $:.unshift File.dirname(__FILE__)
 
+require 'net/http'
 require 'xlogin/factory'
 require 'xlogin/version'
 
@@ -58,7 +59,7 @@ module Xlogin
 
     def source(*source_files, &block)
       return source_file(*source_files) unless block
-      factory.instance_eval(&block) unless source_files.empty?
+      factory.instance_eval(&block) if source_files.empty?
     end
 
     def source_file(*source_files)
@@ -69,17 +70,28 @@ module Xlogin
     end
 
     def template(name, *args, &block)
-      return template_dir(name, *args) unless block
+      unless block
+        return template_url(name, *args) if name =~ URI.regexp(['http', 'https'])
+        return template_dir(name, *args)
+      end
 
       raise ArgumentError.new('missing template name') unless name
       factory.set_template(name, &block)
+    end
+
+    def template_url(*template_urls)
+      template_urls.compact.each do |url|
+        uri = URI(url.to_s)
+        name = File.basename(uri.path, '.rb').scan(/\w+/).join('_')
+        factory.set_template(name, Net::HTTP.get(uri))
+      end
     end
 
     def template_file(*template_files)
       template_files.compact.each do |file|
         raise TemplateError.new("Template file not found: #{file}") unless File.exist?(file)
         name = File.basename(file, '.rb').scan(/\w+/).join('_')
-        factory.set_template(name, IO.read(file)) if File.exist?(file)
+        factory.set_template(name, IO.read(file))
       end
     end
 
