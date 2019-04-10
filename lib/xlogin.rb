@@ -83,7 +83,12 @@ module Xlogin
       template_urls.compact.each do |url|
         uri = URI(url.to_s)
         name = File.basename(uri.path, '.rb').scan(/\w+/).join('_')
-        factory.set_template(name, Net::HTTP.get(uri))
+        text = Net::HTTP.get(uri)
+        if text =~ /\w+.rb$/
+          uri.path = File.join(File.dirname(uri.path), text.lines.first.chomp)
+          text = Net::HTTP.get(uri)
+        end
+        factory.set_template(name, text)
       end
     end
 
