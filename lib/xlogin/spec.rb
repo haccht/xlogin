@@ -45,6 +45,7 @@ module Xlogin
     def expect(*args)
       Expectation.new(self, *args)
     end
+    alias_method :exp, :expect
 
   end
 end

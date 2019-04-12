@@ -26,6 +26,7 @@ module Xlogin
     attr_reader   :name
     attr_accessor :lock
     attr_accessor :log
+    attr_accessor :timeout
     attr_accessor :silent
     attr_accessor :fail_on_error
 
@@ -34,6 +35,7 @@ module Xlogin
     def initialize(name)
       @name     = name
       @runner   = nil
+      @timeout  = nil
       @silent ||= Rake.application.options.silent
       @fail_on_error = true
 
@@ -69,13 +71,16 @@ module Xlogin
     end
 
     def run_task
-      buffer  = StringIO.new
-      loggers = []
-      loggers << log     if log
-      loggers << buffer  if !silent &&  Rake.application.options.always_multitask
-      loggers << $stdout if !silent && !Rake.application.options.always_multitask
+      buffer = StringIO.new
 
-      session = Xlogin.get(name, log: loggers)
+      args = Hash.new
+      args[:log] = []
+      args[:log] << log     if log
+      args[:log] << buffer  if !silent &&  Rake.application.options.always_multitask
+      args[:log] << $stdout if !silent && !Rake.application.options.always_multitask
+      args[:timeout] = timeout if timeout
+
+      session = Xlogin.get(name, **args)
       @runner.call(session)
       session.close rescue nil
 
