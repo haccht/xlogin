@@ -11,7 +11,6 @@ module Xlogin
     def initialize
       @inventory    = Hash.new
       @templates    = Hash.new
-      @session_pool = Hash.new
     end
 
     def set_inventory(name, **opts)
@@ -59,14 +58,7 @@ module Xlogin
     end
 
     def build_pool(args, **opts)
-      uri = case args
-            when Hash   then uri(args)
-            when String then uri(get_inventory(args))
-            else return
-            end
-
-      param = opts.map { |k, v| "#{k}=#{v}" }.join('&')
-      @session_pool["#{uri}?#{param}"] ||= Xlogin::SessionPool.new(args, **opts)
+      Xlogin::SessionPool.new(args, **opts)
     end
 
     def build_from_hostname(args, **opts)

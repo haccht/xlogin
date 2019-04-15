@@ -32,9 +32,9 @@ module Xlogin
     def with
       session = deq
       begin
-        session.prompt # confirm that the session is still alive
+        raise IOError if session.sock.closed?
       rescue IOError, EOFError, Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
-        destroy session
+        destroy(session)
         session = deq
       end
 
@@ -46,7 +46,7 @@ module Xlogin
     def close
       while @queue.empty?
         session, _, _ = @queue.deq
-        destroy session
+        destroy(session)
       end
     end
 
@@ -61,18 +61,17 @@ module Xlogin
 
       session, created, cleaner = @queue.deq
       if Time.now - created > @idle
-        destroy session
+        destroy(session)
         return deq
       end
 
-      cleaner.kill
       session
     end
 
     def enq(session)
       created = Time.now
       cleaner = Thread.new(session) do |s|
-        sleep @idle * 2
+        sleep @idle * 1.5
         s.close rescue nil
       end
 

@@ -76,7 +76,11 @@ module Xlogin
           next if logger.nil? || [$stdout, $stderr].include?(logger)
           logger.close
         end
-        @gateway.shutdown! if @gateway
+
+        if @gateway
+          @gateway.close(@port)
+          @gateway.shutdown!
+        end
 
         super
       end
