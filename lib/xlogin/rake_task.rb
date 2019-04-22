@@ -11,6 +11,7 @@ module Xlogin
       include Rake::DSL
 
       def generate(*patterns, **opts, &block)
+        patterns    = ['*'] if patterns.empty?
         description = Rake.application.last_description
         hostnames   = Xlogin.list(*patterns).map { |e| e[:name] }
 
@@ -20,6 +21,16 @@ module Xlogin
           RakeTask.new(hostname, &block)
         end
 
+      end
+
+      def printf(fp, text)
+        time = Time.now.iso8601
+        fp.print "\n"
+        text.chomp.each_line do |line|
+          fp.print "#{time} "
+          fp.print "#{name}\t" if Rake.application.options.always_multitask
+          fp.print "|#{line.gsub(/^\s*[\r\n]+/, '')}\n"
+        end
       end
     end
 
@@ -84,21 +95,12 @@ module Xlogin
       @runner.call(session)
       session.close rescue nil
 
-      printf($stdout, buffer.string) if !silent && Rake.application.options.always_multitask
+      RakeTask.printf($stdout, buffer.string) if !silent && Rake.application.options.always_multitask
     rescue => e
-      printf($stderr, buffer.string) if !silent && Rake.application.options.always_multitask
-      printf($stderr, "[ERROR] #{e}\n")
+      RakeTask.printf($stderr, buffer.string) if !silent && Rake.application.options.always_multitask
+      RakeTask.printf($stderr, "ERROR - #{e}\n")
 
       @@graceful_shutdown = true if fail_on_error
-    end
-
-    def printf(fp, text)
-      time = Time.now.iso8601
-      text.each_line do |line|
-        fp.print "#{time} "
-        fp.print "#{name}\t" if Rake.application.options.always_multitask
-        fp.print "|#{line.chomp.gsub(/^\s*\r/, '')}\n"
-      end
     end
 
   end
