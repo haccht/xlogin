@@ -11,7 +11,6 @@ module Xlogin
       include Rake::DSL
 
       def generate(*patterns, **opts, &block)
-        patterns    = ['*'] if patterns.empty?
         description = Rake.application.last_description
         hostnames   = Xlogin.list(*patterns).map { |e| e[:name] }
 
@@ -24,13 +23,18 @@ module Xlogin
       end
 
       def printf(fp, text)
-        time = Time.now.iso8601
-        fp.print "\n"
-        text.chomp.each_line do |line|
-          fp.print "#{time} "
-          fp.print "#{name}\t" if Rake.application.options.always_multitask
-          fp.print "|#{line.gsub(/^\s*[\r\n]+/, '')}\n"
+        time  = Time.now.iso8601
+        lines = text.lines
+        lines.pop if lines[-1] == "\n"
+
+        lines = lines.map do |line|
+          str = time
+          str << " #{name}" if Rake.application.options.always_multitask
+          str << " |#{line.gsub(/^\s*[\r\n]+/, '')}"
         end
+
+        fp.print "\n"
+        fp.print lines.join("\n")
       end
     end
 
