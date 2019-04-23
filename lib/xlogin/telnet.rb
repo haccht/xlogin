@@ -38,8 +38,7 @@ module Xlogin
             @sock.syswrite(bs)
           when @sock
             begin
-              bs = fh.readpartial(1024)
-              output_log(bs)
+              log(fh.readpartial(1024))
             rescue Errno::EAGAIN
               retry
             end

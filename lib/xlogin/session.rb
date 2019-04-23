@@ -86,6 +86,10 @@ module Xlogin
       end
     end
 
+    def log(text)
+      @loggers.each { |_, logger| logger.syswrite(text) if logger }
+    end
+
     def enable_log(log = $stdout)
       @loggers.update(log => build_logger(log))
       if block_given?
@@ -106,7 +110,7 @@ module Xlogin
     def _waitfor(*args, &block)
       __waitfor = method(:waitfor).super_method
       line = __waitfor.call(*args) do |recv|
-        output_log(recv)
+        log(recv)
         block.call(recv) if block
       end
 
@@ -117,10 +121,6 @@ module Xlogin
       end
 
       return line
-    end
-
-    def output_log(text)
-      @loggers.each { |_, logger| logger.syswrite(text) if logger }
     end
 
     def ssh_tunnel(gateway)
