@@ -20,7 +20,14 @@ module Xlogin
           desc "#{description} - #{hostname}" if opts[:desc] == true
           RakeTask.new(hostname, &block)
         end
+      end
 
+      def shutdown!
+        @stop = true
+      end
+
+      def stop?
+        !!@stop
       end
     end
 
@@ -30,8 +37,6 @@ module Xlogin
     attr_accessor :timeout
     attr_accessor :silent
     attr_accessor :fail_on_error
-
-    @@stopped = false
 
     def initialize(name)
       @name     = name
@@ -61,12 +66,13 @@ module Xlogin
       if lock
         task(name => lock)
         file(lock) do
-          run_task unless @@stopped
-          touch(lock, verbose: Rake.application.options.trace) unless @@stopped
+          next if RakeTask.stop?
+          run_task && touch(lock, verbose: Rake.application.options.trace)
         end
       else
         task(name) do
-          run_task unless @@stopped
+          next if RakeTask.stop?
+          run_task
         end
       end
     end
@@ -79,22 +85,27 @@ module Xlogin
       logger.push buffer  if !silent &&  Rake.application.options.always_multitask
 
       session = Xlogin.get(name, log: logger, timeout: timeout)
-      def session.comment(text, prefix: "[INFO]", **color)
-        color = {color: :green}.merge(**color)
+      def session.msg(text, prefix: "[INFO]", chomp: false, **color)
+        default_color = { color: :green }
 
         log("\n")
         log(Time.now.iso8601.colorize(**color) + ' ') if !Rake.application.options.always_multitask
-        log("#{prefix} #{text}".colorize(**color))
-        cmd('')
+        log("#{prefix} #{text}".colorize(**default_color.merge(color)))
+        cmd('') unless chomp
       end
 
       @runner.call(session)
       $stdout.print format_log(buffer.string)
-    rescue => e
-      session.comment("#{e}", prefix: "[ERROR]", color: :red)
-      $stderr.print format_log(buffer.string)
 
-      @@stopped = true if fail_on_error
+      return true
+    rescue => e
+      RakeTask.shutdown! if fail_on_error
+
+      session.msg("#{e}", prefix: "[ERROR]", chomp: true, color: :white, background: :red)
+      $stderr.print format_log(buffer.string.colorize(color: :light_red))
+      $stderr.print "\n"
+
+      return false
     ensure
       session.close rescue nil
     end
