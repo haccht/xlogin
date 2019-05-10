@@ -1,7 +1,4 @@
 prompt(/[>$#] /)
-prompt(/y\/n:/) do
-  puts (Xlogin.authorized?)? 'y' : 'n'
-end
 
 login do |*args|
   username, password = *args

@@ -1,7 +1,4 @@
 prompt(/[>$#]/)
-prompt(/yes \/ no: /) do
-  puts (Xlogin.authorized?)? 'y' : 'n'
-end
 
 login do |password|
   waitfor(/Password: /) && puts(password)
