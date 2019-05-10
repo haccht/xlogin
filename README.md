@@ -34,7 +34,8 @@ login do |username, password|
 end
 ```
 
-Some other example are in [lib/xlogin/templates](https://github.com/haccht/xlogin/tree/master/lib/xlogin/templates).
+Some other examples are in [lib/xlogin/templates](https://github.com/haccht/xlogin/tree/master/lib/xlogin/templates).  
+You can just load these built-in templates by adding `require "xlogin/template"` in your script.
 
 Beside template files, you need to prepare an inventory file `~/.xloginrc`.
 In this file, you need to write all information required to login each device.
