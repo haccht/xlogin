@@ -47,7 +47,7 @@ module Xlogin
       Xlogin.configure do
         authorize(config.auth)
         source(File.expand_path(config.inventory, ENV['PWD']))
-        template_dir(File.expand_path(config.template_dir, ENV['PWD']))
+        template(File.expand_path(config.template_dir, ENV['PWD']))
       end
 
       config.hosts = Xlogin.list(*args)

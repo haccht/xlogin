@@ -20,6 +20,10 @@ module Xlogin
       factory.list_inventory(*patterns)
     end
 
+    def find(*patterns)
+      list(*patterns).first
+    end
+
     def get(args, **opts, &block)
       session = case args
                 when Hash   then factory.build(**args.merge(**opts))
@@ -57,32 +61,41 @@ module Xlogin
       @authorized = boolean == true || (block && block.call == true)
     end
 
-    def source(*source_files, &block)
-      return source_file(*source_files) unless block
-      factory.instance_eval(&block) if source_files.empty?
-    end
-
-    def source_file(*source_files)
-      source_files.compact.each do |file|
-        raise SessionError.new("Inventory file not found: #{file}") unless File.exist?(file)
-        factory.instance_eval(IO.read(file), file) if File.exist?(file)
-      end
-    end
-
-    def template(name, *args, &block)
+    def source(*sources, &block)
       unless block
-        return template_url(name, *args) if name =~ URI.regexp(['http', 'https'])
-        return template_dir(name, *args)
+        return sources.each do |path|
+          raise SessionError.new("Inventory file not found: #{path}") unless File.exist?(path)
+          factory.instance_eval(IO.read(path), path)
+        end
       end
 
-      raise ArgumentError.new('missing template name') unless name
+      factory.instance_eval(&block)
+    end
+
+    def template(*templates, **opts, &block)
+      unless block
+        templates.each do |template|
+          return template_url(template, **opts) if template =~ URI.regexp(['http', 'https'])
+          raise TemplateError.new("Template file or directory not found: #{template}") unless File.exist?(template)
+
+          files = [template] if File.file?(template)
+          files = Dir.glob(File.join(template, '*.rb')) if File.directory?(template)
+          files.each do |file|
+            name = opts[:type] || File.basename(file, '.rb').scan(/\w+/).join('_')
+            factory.set_template(name, IO.read(file))
+          end
+        end
+      end
+
+      name = opts[:type] || templates.first
+      raise ArgumentError.new('Missing template name') unless name
       factory.set_template(name, &block)
     end
 
-    def template_url(*template_urls)
+    def template_url(*template_urls, **opts)
       template_urls.compact.each do |url|
         uri = URI(url.to_s)
-        name = File.basename(uri.path, '.rb').scan(/\w+/).join('_')
+        name = opts[:type] || File.basename(uri.path, '.rb').scan(/\w+/).join('_')
         text = Net::HTTP.get(uri)
         if text =~ /\w+.rb$/
           uri.path = File.join(File.dirname(uri.path), text.lines.first.chomp)
@@ -90,19 +103,6 @@ module Xlogin
         end
         factory.set_template(name, text)
       end
-    end
-
-    def template_file(*template_files)
-      template_files.compact.each do |file|
-        raise TemplateError.new("Template file not found: #{file}") unless File.exist?(file)
-        name = File.basename(file, '.rb').scan(/\w+/).join('_')
-        factory.set_template(name, IO.read(file))
-      end
-    end
-
-    def template_dir(*template_dirs)
-      files = template_dirs.flat_map { |dir| Dir.glob(File.join(dir, '*.rb')) }
-      template_file(*files)
     end
 
   end
