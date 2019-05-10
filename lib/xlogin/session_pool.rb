@@ -31,13 +31,6 @@ module Xlogin
 
     def with
       session = deq
-      begin
-        raise IOError if session.sock.closed?
-      rescue IOError, EOFError, Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
-        destroy(session)
-        session = deq
-      end
-
       Thread.handle_interrupt(Exception => :immediate) { yield session }
     ensure
       enq session
@@ -50,7 +43,6 @@ module Xlogin
       end
     end
 
-    private
     def deq
       @mutex.synchronize do
         if @queue.empty? && @created < @size
@@ -63,6 +55,13 @@ module Xlogin
       if Time.now - created > @idle
         destroy(session)
         return deq
+      end
+
+      begin
+        raise IOError if session.sock.closed?
+      rescue IOError, EOFError, Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
+        destroy(session)
+        session = deq
       end
 
       session
