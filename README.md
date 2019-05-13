@@ -1,7 +1,7 @@
 # xlogin
 
 rancid clogin alternative.  
-xlogin is a tool to login devices and execute series of tasks.
+xlogin is a tool to login devices and execute series of commands with ease.
 
 ## Installation
 
@@ -21,8 +21,9 @@ Or install it yourself as:
 
 ## Usage
 
-Write a template file that describe how to login to the specific type of device, and store it to `~/.xlogin.d/`.  
-Take vyos as an example, template file would be:
+Write a firmware template that describe how to manage the device, and store it to `~/.xlogin.d/`.  
+Be aware that the name of the template file should match the hosttype of the device in the inventory file.  
+Take vyos as an example, template file `vyos.rb` would be:
 
 ```ruby
 prompt(/[$#] (?:\e\[K)?\z/n)
@@ -34,11 +35,10 @@ login do |username, password|
 end
 ```
 
-Some other examples are in [lib/xlogin/templates](https://github.com/haccht/xlogin/tree/master/lib/xlogin/templates).  
+Some other example templates are in [lib/xlogin/templates](https://github.com/haccht/xlogin/tree/master/lib/xlogin/templates).  
 You can just load these built-in templates by adding `require "xlogin/template"` in your script.
 
-Beside template files, you need to prepare an inventory file `~/.xloginrc`.
-In this file, you need to write all information required to login each device.
+Besides template files, you need to prepare an inventory file `~/.xloginrc` that list all information required to login each devices.
 
 ```
 #hosttype	hostname	uri scheme
@@ -46,13 +46,13 @@ vyos	'vyos01',	'telnet://vagrant:vagrant@127.0.0.1:2200'
 vyos	'vyos02',	'telnet://vagrant:vagrant@127.0.0.1:2201'
 ```
 
-Now you can login any device in your `.xloginrc` file with a command:
+Now you can login the device in your `.xloginrc` file.
 
 ```sh
 $ xlogin vyos01
 ```
 
-And execute multiple operations with just a single command:
+And execute multiple operations with just a single command.
 
 ~~~sh
 $ xlogin 'vyos*' -e 'show configuration command | no-more; exit' -j 2
