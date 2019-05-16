@@ -62,7 +62,7 @@ module Xlogin
 
     def puts(*args, &block)
       args = [instance_exec(*args, &@template.interrupt!)].flatten.compact if @template.interrupt!
-      super(*args, &block) unless args.empty?
+      args.empty? ? super('', &block) : super(*args, &block)
     end
 
     def waitfor(*args, &block)

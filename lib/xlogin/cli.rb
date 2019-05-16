@@ -21,8 +21,8 @@ module Xlogin
     def self.getopts(args)
       config = OpenStruct.new(
         jobs: 1,
-        auth: false,
         task: [:tty, nil],
+        assume_yes:   false,
         inventory:    DEFAULT_INVENTORY_FILE,
         template_dir: DEFAULT_TEMPLATE_DIR,
       )
@@ -40,12 +40,12 @@ module Xlogin
       parser.on('-e COMMAND', '--exec', 'Execute commands and quit.') { |v| config.task = [:exec, v] }
 
       parser.on('-j NUM', '--jobs', Integer, 'The NUM of jobs to execute in parallel(default: 1).') { |v| config.jobs = v }
-      parser.on('-y',     '--assume-yes', TrueClass, 'Automatically answer yes to prompts.')        { |v| config.auth = v }
       parser.on('-E',     '--enable',     TrueClass, 'Try to gain enable priviledge.')              { |v| config.enable = v }
+      parser.on('-y',     '--assume-yes', TrueClass, 'Automatically answer yes to prompts.')        { |v| config.assume_yes = v }
 
       parser.parse!(args)
       Xlogin.configure do
-        authorize(config.auth)
+        assume_yes(true)
         source(File.expand_path(config.inventory, ENV['PWD']))
         template(File.expand_path(config.template_dir, ENV['PWD']))
       end

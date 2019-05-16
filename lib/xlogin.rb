@@ -8,7 +8,6 @@ module Xlogin
 
   class SessionError       < StandardError; end
   class TemplateError      < StandardError; end
-  class AuthorizationError < StandardError; end
 
   class << self
 
@@ -46,8 +45,8 @@ module Xlogin
       instance_eval(&block)
     end
 
-    def authorized?
-      @authorized == true
+    def assume_yes?
+      @assume_yes == true
     end
 
     def generate_templates(dir)
@@ -57,8 +56,8 @@ module Xlogin
     end
 
     private
-    def authorize(boolean = true, &block)
-      @authorized = boolean == true || (block && block.call == true)
+    def assume_yes(boolean = true, &block)
+      @assume_yes = boolean == true || (block && block.call == true)
     end
 
     def source(*sources, &block)

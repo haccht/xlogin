@@ -85,14 +85,6 @@ module Xlogin
       logger.push buffer  if !silent &&  Rake.application.options.always_multitask
 
       session = Xlogin.get(name, log: logger, timeout: timeout)
-      def session.msg(text, prefix: "[INFO]", chomp: false, **color)
-        default_color = { color: :green }
-
-        log("\n")
-        log(Time.now.iso8601.colorize(**color) + ' ') if !Rake.application.options.always_multitask
-        log("#{prefix} #{text}".colorize(**default_color.merge(color)))
-        cmd('') unless chomp
-      end
 
       @runner.call(session)
       $stdout.print format_log(buffer.string)
@@ -116,5 +108,16 @@ module Xlogin
       end.join
     end
 
+  end
+
+  module SessionModule
+    def msg(text, prefix: "[INFO]", chomp: false, **color)
+      default_color = { color: :green }
+
+      log("\n")
+      log(Time.now.iso8601.colorize(**color) + ' ') if !Rake.application.options.always_multitask
+      log("#{prefix} #{text}".colorize(**default_color.merge(color)))
+      cmd('') unless chomp
+    end
   end
 end
