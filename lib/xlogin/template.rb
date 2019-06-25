@@ -14,7 +14,7 @@ module Xlogin
       @name    = name
       @timeout = DEFAULT_TIMEOUT
       @prompts = Array.new
-      @methods = Hash.new
+      @methods = Hash.new { |h, k| h[k] = {} }
       @interrupt = nil
     end
 
@@ -29,8 +29,8 @@ module Xlogin
       @prompts
     end
 
-    def bind(name = nil, &block)
-      @methods[name] = block
+    def bind(name = nil, scope: :default, &block)
+      @methods[scope][name] = block
     end
 
     def interrupt!(&block)
@@ -41,12 +41,14 @@ module Xlogin
     def build(uri, **opts)
       klass = Class.new(Xlogin.const_get(uri.scheme.capitalize))
       klass.class_exec(@methods) do |methods|
-        methods.each do |name, block|
-          case name.to_s
-          when 'enable'
-            define_method(name) { |args = nil| instance_exec(args || opts[:enable], &block) }
-          else
-            define_method(name, &block)
+        [:default, *opts[:scope]].uniq.each do |scope|
+          methods[scope].each do |name, block|
+            case name.to_s
+            when 'enable'
+              define_method(name) { |args = nil| instance_exec(args || opts[:enable], &block) }
+            else
+              define_method(name, &block)
+            end
           end
         end
       end
