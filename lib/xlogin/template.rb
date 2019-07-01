@@ -8,13 +8,14 @@ module Xlogin
     DEFAULT_PROMPT   = /[$%#>] ?\z/n
     RESERVED_METHODS = %i( login logout enable disable delegate )
 
-    attr_reader :name
+    attr_reader :name, :scopes, :methods
 
     def initialize(name)
       @name    = name
+      @scopes  = Hash.new
       @timeout = DEFAULT_TIMEOUT
       @prompts = Array.new
-      @methods = Hash.new { |h, k| h[k] = {} }
+      @methods = Hash.new
       @interrupt = nil
     end
 
@@ -29,8 +30,12 @@ module Xlogin
       @prompts
     end
 
-    def bind(name = nil, scope: :default, &block)
-      @methods[scope][name] = block
+    def scope(name = nil, &block)
+      @scopes[name] = block
+    end
+
+    def bind(name = nil, &block)
+      @methods[name] = block
     end
 
     def interrupt!(&block)
@@ -40,15 +45,16 @@ module Xlogin
 
     def build(uri, **opts)
       klass = Class.new(Xlogin.const_get(uri.scheme.capitalize))
-      klass.class_exec(@methods) do |methods|
-        [:default, *opts[:scope]].uniq.each do |scope|
-          methods[scope].each do |name, block|
-            case name.to_s
-            when 'enable'
-              define_method(name) { |args = nil| instance_exec(args || opts[:enable], &block) }
-            else
-              define_method(name, &block)
-            end
+      klass.class_exec(self) do |template|
+        scopes = [*opts[:scope]].compact
+        scopes.each { |scope| template.instance_eval(&template.scopes[scope]) }
+
+        template.methods.each do |name, block|
+          case name.to_s
+          when 'enable'
+            define_method(name) { |args = nil| instance_exec(args || opts[:enable], &block) }
+          else
+            define_method(name, &block)
           end
         end
       end
