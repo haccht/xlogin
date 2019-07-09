@@ -81,20 +81,20 @@ module Xlogin
       buffer = StringIO.new
 
       logger = log ? [log] : []
+      logger.push buffer
       logger.push $stdout if !silent && !Rake.application.options.always_multitask
-      logger.push buffer  if !silent &&  Rake.application.options.always_multitask
 
       session = Xlogin.get(name, log: logger, timeout: timeout)
 
       @runner.call(session)
-      $stdout.print format_log(buffer.string)
+      $stdout.print format_log(buffer.string) if !silent && Rake.application.options.always_multitask
 
       return true
     rescue => e
       RakeTask.shutdown! if fail_on_error
 
-      session.msg("#{e}", prefix: "[ERROR]", chomp: true, color: :white, background: :red)
-      $stderr.print format_log(buffer.string.colorize(color: :light_red))
+      buffer.puts("\n[ERROR] #{e}".colorize(color: :white, background: :red))
+      $stderr.print "\n" + format_log(buffer.string.chomp).colorize(color: :light_red)
       $stderr.print "\n"
 
       return false
@@ -116,6 +116,7 @@ module Xlogin
 
       log("\n")
       log(Time.now.iso8601.colorize(**color) + ' ') if !Rake.application.options.always_multitask
+
       log("#{prefix} #{text}".colorize(**default_color.merge(color)))
       cmd('') unless chomp
     end
