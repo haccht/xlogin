@@ -61,13 +61,14 @@ module Xlogin
     end
 
     def puts(*args, &block)
-      args = [instance_exec(*args, &@template.interrupt!)].flatten.compact if @template.interrupt!
+      args = args.flat_map { |arg| instance_exec(arg, &@template.interrupt!) }.compact if @template.interrupt!
       args.empty? ? super('', &block) : super(*args, &block)
     end
 
-    def waitfor(*args, &block)
-      args = [Regexp.union(*@template.prompt.map(&:first))] if args.empty?
-      @mutex.synchronize { _waitfor(*args, &block) }
+    def waitfor(pattern = nil, union = false, &block)
+      pattern = Regexp.union(pattern, *@template.prompt.map(&:first)) if pattern && union
+      pattern = Regexp.union(*@template.prompt.map(&:first)) unless pattern
+      @mutex.synchronize { _waitfor(pattern, &block) }
     end
 
     def close
@@ -107,9 +108,9 @@ module Xlogin
     end
 
     private
-    def _waitfor(*args, &block)
+    def _waitfor(pattern, &block)
       __waitfor = method(:waitfor).super_method
-      line = __waitfor.call(*args) do |recv|
+      line = __waitfor.call(pattern) do |recv|
         log(recv)
         block.call(recv) if block
       end
@@ -117,7 +118,7 @@ module Xlogin
       _, process = @template.prompt.find { |r, p| r =~ line && p }
       if process
         instance_eval(&process)
-        line += _waitfor(*args, &block)
+        line += _waitfor(pattern, &block)
       end
 
       return line
