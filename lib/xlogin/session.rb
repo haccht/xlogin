@@ -75,6 +75,7 @@ module Xlogin
     end
 
     def close
+      logout if respond_to?(:logout)
       @mutex.synchronize do
         @loggers.each do |_, logger|
           next if logger.nil? || [$stdout, $stderr].include?(logger)
