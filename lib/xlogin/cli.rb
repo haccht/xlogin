@@ -41,7 +41,7 @@ module Xlogin
         begin
           loggers  = []
           loggers << ((jobs > 1)? buffer : $stdout)
-          loggers << File.expand_path(File.join(config[:log_dir], "#{info[:name]}.log"), ENV['PWD']) if config[:log_dir]
+          loggers << File.expand_path(File.join(config[:"log-dir"], "#{info[:name]}.log"), ENV['PWD']) if config[:"log-dir"]
 
           session = Xlogin.get(info.merge(log: loggers))
           session.enable(info[:enable]) if config[:enable] && info[:enable]
