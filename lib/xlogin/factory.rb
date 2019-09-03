@@ -52,7 +52,7 @@ module Xlogin
 
     def build(type:, **opts)
       template = get_template(type)
-      raise TemplateError.new("Template not found: '#{type}'") unless template
+      raise Xlogin::Error.new("Template not found: '#{type}'") unless template
 
       template.build(uri(opts), **opts)
     end
@@ -63,19 +63,17 @@ module Xlogin
 
     def build_from_hostname(args, **opts)
       hostinfo = get_inventory(args)
-      raise SessionError.new("Host not found: '#{args}'") unless hostinfo
+      raise Xlogin::Error.new("Host not found: '#{args}'") unless hostinfo
 
       build(hostinfo.merge(name: args, **opts))
     end
 
-    def method_missing(method_name, *args, &block)
-      super unless args.size == 2 || args.size == 3 && URI.regexp =~ args[1]
+    def method_missing(method_name, *args, **opts, &block)
+      super unless args.size == 2 && URI.regexp =~ args[1]
 
       type = method_name.to_s.downcase
       name = args[0]
       uri  = args[1]
-      opts = args[2] || {}
-
       set_inventory(name, type: type, uri: uri, **opts)
     end
 
@@ -90,7 +88,7 @@ module Xlogin
 
       Addressable::URI.parse("#{scheme}://" + [userinfo, address].compact.join('@'))
     rescue
-      raise SessionError.new("Invalid target - '#{opts}'")
+      raise Xlogin::Error.new("Invalid target - '#{opts}'")
     end
 
   end

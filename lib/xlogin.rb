@@ -1,20 +1,21 @@
 $:.unshift File.dirname(__FILE__)
 
 require 'net/http'
+require 'ostruct'
 require 'xlogin/factory'
 require 'xlogin/version'
 
 module Xlogin
 
-  class SessionError       < StandardError; end
-  class TemplateError      < StandardError; end
+  class Error < StandardError; end
+  class Settings < OpenStruct
+    def initialize(*args, &block)
+      super(*args, &block)
+      freeze
+    end
+  end
 
   class << self
-
-    def factory
-      @factory ||= Xlogin::Factory.instance
-    end
-
     def list(*patterns)
       factory.list_inventory(*patterns)
     end
@@ -27,12 +28,14 @@ module Xlogin
       session = case args
                 when Hash   then factory.build(**args.merge(**opts))
                 when String then factory.build_from_hostname(args, **opts)
-                else return
+                else
+                  raise SessionError.new("Invalid argument: '#{args}'")
                 end
 
       return session unless block
       begin block.call(session) ensure session.close end
     end
+    alias_method :create, :get
 
     def get_pool(args, **opts, &block)
       pool = factory.build_pool(args, **opts)
@@ -40,13 +43,15 @@ module Xlogin
       return pool unless block
       block.call(pool)
     end
+    alias_method :create_pool, :get_pool
 
     def configure(&block)
       instance_eval(&block)
     end
 
-    def assume_yes?
-      @assume_yes == true
+    def settings
+      @settings ||= {}
+      Settings.new(@settings)
     end
 
     def generate_templates(dir)
@@ -56,54 +61,50 @@ module Xlogin
     end
 
     private
-    def assume_yes(boolean = true, &block)
-      @assume_yes = boolean == true || (block && block.call == true)
+    def factory
+      @factory ||= Xlogin::Factory.instance
+    end
+
+    def set(**opts)
+      @settings ||= {}
+      opts.each do |key, val|
+        val = val.call if val.kind_of?(Proc)
+        @settings.update(key.to_sym => val)
+      end
     end
 
     def source(*sources, &block)
-      unless block
-        return sources.each do |path|
-          raise SessionError.new("Inventory file not found: #{path}") unless File.exist?(path)
-          factory.instance_eval(IO.read(path), path)
-        end
-      end
+      return factory.instance_eval(&block) if block
 
-      factory.instance_eval(&block)
+      sources.each do |path|
+        raise Xlogin::Error.new("Inventory file not found: #{path}") unless File.exist?(path)
+        factory.instance_eval(IO.read(path), path)
+      end
     end
 
     def template(*templates, **opts, &block)
-      unless block
-        templates.each do |template|
-          return template_url(template, **opts) if template =~ URI.regexp(['http', 'https'])
-          raise TemplateError.new("Template file or directory not found: #{template}") unless File.exist?(template)
+      return factory.set_template(templates.shift, &block) if block && templates.size == 1
 
-          files = [template] if File.file?(template)
-          files = Dir.glob(File.join(template, '*.rb')) if File.directory?(template)
-          files.each do |file|
-            name = opts[:type] || File.basename(file, '.rb').scan(/\w+/).join('_')
-            factory.set_template(name, IO.read(file))
-          end
+      templates.each do |template|
+        return template_url(template, **opts) if template =~ URI.regexp(['http', 'https'])
+        raise Xlogin::Error.new("Template file or directory not found: #{template}") unless File.exist?(template)
+
+        paths = [template] if File.file?(template)
+        paths = Dir.glob(File.join(template, '*.rb')) if File.directory?(template)
+        paths.each do |path|
+          name = opts[:type] || File.basename(path, '.rb').scan(/\w+/).join('_')
+          factory.set_template(name, IO.read(path))
         end
       end
-
-      name = opts[:type] || templates.first
-      raise ArgumentError.new('Missing template name') unless name
-      factory.set_template(name, &block)
     end
 
     def template_url(*template_urls, **opts)
-      template_urls.compact.each do |url|
-        uri = URI(url.to_s)
+      template_urls.each do |url|
+        uri  = URI(url.to_s)
         name = opts[:type] || File.basename(uri.path, '.rb').scan(/\w+/).join('_')
-        text = Net::HTTP.get(uri)
-        if text =~ /\w+.rb$/
-          uri.path = File.join(File.dirname(uri.path), text.lines.first.chomp)
-          text = Net::HTTP.get(uri)
-        end
-        factory.set_template(name, text)
+        factory.set_template(name, Net::HTTP.get(uri))
       end
     end
-
   end
 
 end
