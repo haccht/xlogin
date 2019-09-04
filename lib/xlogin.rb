@@ -13,6 +13,11 @@ module Xlogin
       super(*args, &block)
       freeze
     end
+
+    def method_missing(name, *args, &block)
+      return to_h.key($1.to_sym) if name.to_s =~ /^(\w+)\?$/
+      super(name, *args, &block)
+    end
   end
 
   class << self
