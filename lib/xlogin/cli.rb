@@ -22,7 +22,7 @@ module Xlogin
       info = Xlogin.list(*config[:pattern]).first
       $stdout.puts "Trying #{info[:name]}...", "Escape character is '^]'."
 
-      session, _ = exec(config.merge(jobs: 1))
+      session, _ = exec(config.merge(pattern: info[:name], jobs: 1))
       session.interact!
     end
 
