@@ -8,14 +8,14 @@ require 'xlogin/version'
 module Xlogin
 
   class Error < StandardError; end
-  class Settings < OpenStruct
+  class ReadOnlyStruct < OpenStruct
     def initialize(*args, &block)
       super(*args, &block)
       freeze
     end
 
     def method_missing(name, *args, &block)
-      return to_h.key($1.to_sym) if name.to_s =~ /^(\w+)\?$/
+      return to_h.key?($1.to_sym) if name.to_s =~ /^(\w+)\?$/
       super(name, *args, &block)
     end
   end
@@ -56,7 +56,7 @@ module Xlogin
 
     def settings
       @settings ||= {}
-      Settings.new(@settings)
+      @rosettings ||= ReadOnlyStruct.new(@settings)
     end
 
     def generate_templates(dir)
