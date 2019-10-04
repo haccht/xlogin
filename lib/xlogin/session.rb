@@ -25,22 +25,28 @@ module Xlogin
       @template = template
       @username, @password = uri.userinfo.to_s.split(':')
 
-      ssh_tunnel(@config.via) if @config.via
+      forward = @config.forward || @config.via
+      ssh_tunnel(forward) if forward
       max_retry = @config.retry || 1
 
       @mutex   = Mutex.new
       @loggers = [@config.log].flatten.uniq.reduce({}) { |a, e| a.merge(e => build_logger(e)) }
 
       begin
-        super(
-          'Host'     => @host,
-          'Port'     => @port,
-          'Username' => @username,
-          'Password' => @password,
-          'Timeout'  => @config.timeout || @template.timeout || false,
-          'Prompt'   => prompt_pattern,
-          'FailEOF'  => true,
-        )
+        args = Hash.new
+        args['Timeout'] = @config.timeout || @template.timeout || false
+        args['Prompt' ] = prompt_pattern
+        args['FailEOF'] = true
+        if @config.proxy
+          args['Proxy'   ] = @config.proxy
+        else
+          args['Host'    ] = @host
+          args['Port'    ] = @port
+          args['Username'] = @username
+          args['Password'] = @password
+        end
+
+        super(args)
       rescue => e
         retry if (max_retry -= 1) > 0
         raise e
@@ -60,8 +66,9 @@ module Xlogin
       Regexp.union(*@template.prompt.map(&:first))
     end
 
-    def duplicate
-      @template.build(@uri, **@config.to_h)
+    def duplicate(type: @template.name, **args)
+      template = Xlogin::Factory.instance.get_template(type)
+      template.build(@uri, **@config.to_h.merge(args))
     end
 
     def puts(*args, &block)
