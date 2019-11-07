@@ -17,7 +17,7 @@ module Xlogin
 
         task 'all' => hostnames unless opts[:all] == false
         hostnames.each do |hostname|
-          desc "#{description} - #{hostname}" if opts[:desc] == true
+          desc "#{description} @#{hostname}" if opts[:all] == false
           RakeTask.new(hostname, &block)
         end
       end
