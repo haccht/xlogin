@@ -1,6 +1,5 @@
 # xlogin
 
-rancid clogin alternative.  
 xlogin is a tool to login devices and execute series of commands with ease.
 
 ## Installation
@@ -38,7 +37,7 @@ end
 Some other example templates are in [lib/xlogin/templates](https://github.com/haccht/xlogin/tree/master/lib/xlogin/templates).  
 You can just load these built-in templates by adding `require "xlogin/template"` in your script.
 
-Besides template files, you need to prepare an inventory file `~/.xloginrc` that list all information required to login each devices.
+Beside template files, you should have your own inventory file `~/.xloginrc` that list all information required to login each devices.
 
 ```
 #hosttype	hostname	uri scheme
@@ -46,7 +45,7 @@ vyos	'vyos01',	'telnet://vagrant:vagrant@127.0.0.1:2200'
 vyos	'vyos02',	'telnet://vagrant:vagrant@127.0.0.1:2201'
 ```
 
-Now you can login the device in your `.xloginrc` file.
+Now you can login to the device in your `.xloginrc` file.
 
 ```sh
 $ xlogin vyos01
