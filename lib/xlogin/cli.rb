@@ -63,7 +63,7 @@ module Xlogin
       config = Hash.new
       config[:runner]    = self.method(:tty)
       config[:inventory] = DEFAULT_INVENTORY_FILE
-      config[:templates] = DEFAULT_TEMPLATE_DIR
+      config[:template]  = DEFAULT_TEMPLATE_DIR
 
       parser = OptionParser.new
       parser.banner  = "#{File.basename($0)} HOST_PATTERN [Options]"
@@ -87,7 +87,7 @@ module Xlogin
       Xlogin.configure do
         set      assume_yes: true if config[:assume_yes]
         source   File.expand_path(config[:inventory], ENV['PWD'])
-        template File.expand_path(config[:templates], ENV['PWD'])
+        template File.expand_path(config[:template],  ENV['PWD'])
       end
       raise "No host found: `#{args.join(', ')}`" if Xlogin.list(*config[:pattern]).empty?
 
