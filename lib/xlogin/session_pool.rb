@@ -51,8 +51,8 @@ module Xlogin
         end
       end
 
-      session, created, cleaner = @queue.deq
-      if Time.now - created > @idle
+      session, last_used = @queue.deq
+      if Time.now - last_used > @idle
         destroy(session)
         return deq
       end
@@ -68,13 +68,8 @@ module Xlogin
     end
 
     def enq(session)
-      created = Time.now
-      cleaner = Thread.new(session) do |s|
-        sleep @idle * 1.5
-        s.close rescue nil
-      end
-
-      @queue.enq [session, created, cleaner]
+      last_used = Time.now
+      @queue.enq [session, last_used]
     end
 
     def destroy(session)

@@ -69,7 +69,7 @@ module Xlogin
     end
 
     def method_missing(method_name, *args, **opts, &block)
-      super unless args.size == 2 && URI.regexp =~ args[1]
+      super unless args.size == 2 && %r{^\S+://\S+} =~ args[1]
 
       type = method_name.to_s.downcase
       name = args[0]

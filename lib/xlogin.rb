@@ -91,7 +91,7 @@ module Xlogin
       return factory.set_template(templates.shift, &block) if block && templates.size == 1
 
       templates.each do |template|
-        return template_url(template, **opts) if template =~ URI.regexp(['http', 'https'])
+        return template_url(template, **opts) if template =~ %r{^https?://\S+}
         raise Xlogin::Error.new("Template file or directory not found: #{template}") unless File.exist?(template)
 
         paths = [template] if File.file?(template)
