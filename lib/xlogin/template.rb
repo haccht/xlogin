@@ -6,7 +6,7 @@ module Xlogin
 
     DEFAULT_TIMEOUT  = 10
     DEFAULT_PROMPT   = /[$%#>] ?\z/n
-    RESERVED_METHODS = %i( login logout enable disable delegate )
+    RESERVED_METHODS = %i( login logout enable disable )
 
     attr_reader :name, :scopes, :methods
 

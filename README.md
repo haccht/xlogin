@@ -62,16 +62,13 @@ Some other commandline options are:
 ~~~sh
 $ xlogin -h
 xlogin HOST_PATTERN [Options]
-    -i, --inventory PATH             The PATH to the inventory file(default: $HOME/.xloginrc).
-        --template PATH              The PATH to the template file.
-    -T, --template-dir DIRECTORY     The DIRECTORY of the template files.
-    -L, --log-dir [DIRECTORY]        The DIRECTORY of the log files(default: $PWD).
-    -l, --list                       List all available devices.
-    -e, --exec                       Execute commands and quit.
-    -t, --tty                        Allocate a pseudo-tty.
-    -j, --jobs NUM                   The NUM of jobs to execute in parallel(default: 1).
-    -E, --enable                     Try to gain enable priviledge.
-    -y, --assume-yes                 Automatically answer yes to any confirmation prompts.
+    -i, --inventory PATH             The PATH to the inventory file.
+    -t, --template PATH              The PATH to the template file or directory.
+    -L, --log-dir PATH               The PATH to the log directory.
+    -l, --list                       List the inventory.
+    -e, --exec COMMAND               Execute commands and quit.
+    -E, --env KEY=VAL                Environment variables.
+    -j, --jobs NUM                   The NUM of jobs to execute in parallel.
 ~~~
 
 ## Development

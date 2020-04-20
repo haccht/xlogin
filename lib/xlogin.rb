@@ -46,7 +46,7 @@ module Xlogin
       pool = factory.build_pool(args, **opts)
 
       return pool unless block
-      block.call(pool)
+      begin block.call(pool) ensure pool.close end
     end
     alias_method :create_pool, :get_pool
 
@@ -55,8 +55,7 @@ module Xlogin
     end
 
     def settings
-      @settings ||= {}
-      @rosettings ||= ReadOnlyStruct.new(@settings)
+      ReadOnlyStruct.new(@settings || {})
     end
 
     def generate_templates(dir)
@@ -70,7 +69,7 @@ module Xlogin
       @factory ||= Xlogin::Factory.instance
     end
 
-    def set(**opts)
+    def set(opts = {})
       @settings ||= {}
       opts.each do |key, val|
         val = val.call if val.kind_of?(Proc)
@@ -79,7 +78,7 @@ module Xlogin
     end
 
     def source(*sources, &block)
-      return factory.instance_eval(&block) if block
+      return factory.instance_eval(&block) if block && sources.size == 0
 
       sources.each do |path|
         raise Xlogin::Error.new("Inventory file not found: #{path}") unless File.exist?(path)
