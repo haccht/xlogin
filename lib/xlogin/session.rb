@@ -9,6 +9,7 @@ require 'thread'
 module Xlogin
   module SessionModule
 
+    attr_reader   :config
     attr_accessor :name
 
     def initialize(template, uri, **opts)
@@ -21,7 +22,7 @@ module Xlogin
                 end
 
       @name     = opts[:name] || @host
-      @config   = OpenStruct.new(opts)
+      @config   = ReadOnlyStruct.new(opts)
       @template = template
       @username, @password = uri.userinfo.to_s.split(':')
 
