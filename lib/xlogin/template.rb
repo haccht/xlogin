@@ -47,12 +47,12 @@ module Xlogin
       klass = Class.new(Xlogin.const_get(uri.scheme.capitalize))
       klass.class_exec(self) do |template|
         scopes = [*opts[:scope]].compact
-        scopes.each { |scope| template.instance_eval(&template.scopes[scope]) }
+        scopes.each{ |scope| template.instance_eval(&template.scopes[scope]) }
 
         template.methods.each do |name, block|
           case name.to_s
           when 'enable'
-            define_method(name) { |args = nil| instance_exec(args || opts[:enable], &block) }
+            define_method(name){ |args = nil| instance_exec(args || opts[:enable], &block) }
           else
             define_method(name, &block)
           end
@@ -64,7 +64,7 @@ module Xlogin
 
     def method_missing(name, *, &block)
       super unless RESERVED_METHODS.include?(name)
-      bind(name) { |*args| instance_exec(*args, &block) }
+      bind(name){ |*args| instance_exec(*args, &block) }
     end
 
   end

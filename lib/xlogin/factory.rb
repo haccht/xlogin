@@ -1,5 +1,6 @@
 require 'addressable/uri'
 require 'singleton'
+require 'thread'
 require 'xlogin/session_pool'
 require 'xlogin/template'
 
@@ -9,8 +10,10 @@ module Xlogin
     include Singleton
 
     def initialize
-      @inventory    = Hash.new
-      @templates    = Hash.new
+      @inventory = Hash.new
+      @templates = Hash.new
+      @gateways  = Hash.new
+      @mutex     = Mutex.new
     end
 
     def set_inventory(name, **opts)
@@ -28,7 +31,7 @@ module Xlogin
         values2 = pattern.split(',').map do |entry|
           key, val = entry.to_s.split(':')
           key, val = 'name', key if val.nil?
-          @inventory.values.select { |e| File.fnmatch(val, e[key.to_sym]) }
+          @inventory.values.select{ |e| File.fnmatch(val, e[key.to_sym]) }
         end
         values2.reduce(&:&)
       end
@@ -48,6 +51,35 @@ module Xlogin
 
     def list_templates
       @templates.keys
+    end
+
+    def open_tunnel(tunnel, host, port)
+      @mutex.synchronize do
+        unless @gateways[tunnel]
+          gateway_uri = Addressable::URI.parse(tunnel)
+          case gateway_uri.scheme
+          when 'ssh'
+            username, password = *gateway_uri.userinfo.split(':')
+            @gateways[tunnel] = Net::SSH::Gateway.new(
+              gateway_uri.host,
+              username,
+              password: password,
+              port: gateway_uri.port || 22
+            )
+          end
+        end
+
+        gateway = @gateways[tunnel]
+        return host, port unless gateway
+        return '127.0.0.1', gateway.open(host, port)
+      end
+    end
+
+    def close_tunnel(tunnel, port)
+      @mutex.synchronize do
+        gateway = @gateways[tunnel]
+        gateway.close(port) if gateway
+      end
     end
 
     def build(type:, **opts)

@@ -61,14 +61,14 @@ module Xlogin
     def generate_templates(dir)
       FileUtils.mkdir_p(dir) unless Dir.exist?(dir)
       builtin_templates = Dir.glob(File.join(File.dirname(__FILE__), 'xlogin', 'templates', '*.rb'))
-      builtin_templates.each { |file| FileUtils.cp(file, DEFAULT_TEMPLATE_DIR) }
+      builtin_templates.each{ |file| FileUtils.cp(file, DEFAULT_TEMPLATE_DIR) }
     end
 
-    private
     def factory
       @factory ||= Xlogin::Factory.instance
     end
 
+    private
     def set(opts = {})
       @settings ||= {}
       opts.each do |key, val|

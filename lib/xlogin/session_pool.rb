@@ -22,16 +22,16 @@ module Xlogin
     end
 
     def size=(val)
-      @mutex.synchronize { @size = val }
+      @mutex.synchronize{ @size = val }
     end
 
     def idle=(val)
-      @mutex.synchronize { @idle = val }
+      @mutex.synchronize{ @idle = val }
     end
 
     def with
       session = deq
-      Thread.handle_interrupt(Exception => :immediate) { yield session }
+      Thread.handle_interrupt(Exception => :immediate){ yield session }
     ensure
       enq session
     end

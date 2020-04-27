@@ -13,7 +13,7 @@ module Xlogin
 
       def generate(*patterns, **opts, &block)
         description = Rake.application.last_description
-        hostnames   = Xlogin.list(*patterns).map { |e| e[:name] }
+        hostnames   = Xlogin.list(*patterns).map{ |e| e[:name] }
 
         task 'all' => hostnames unless opts[:all] == false
         hostnames.each do |hostname|
@@ -111,7 +111,7 @@ module Xlogin
   end
 
   module SessionModule
-    def msg(text, prefix: "[INFO]", chomp: false, **color)
+    def log_message(text, prefix: "[INFO]", chomp: false, **color)
       default_color = { color: :green }
 
       log("\n")

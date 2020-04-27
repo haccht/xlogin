@@ -1,3 +1,3 @@
 module Xlogin
-	VERSION = "0.13.11"
+	VERSION = "0.14.1"
 end

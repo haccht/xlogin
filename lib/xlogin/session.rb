@@ -22,16 +22,16 @@ module Xlogin
                 end
 
       @name     = opts[:name] || @host
+      @tunnel   = opts[:tunnel] || opts[:via]
       @config   = ReadOnlyStruct.new(opts)
       @template = template
       @username, @password = uri.userinfo.to_s.split(':')
 
-      forward = @config.forward || @config.via
-      ssh_tunnel(forward) if forward
       max_retry = @config.retry || 1
+      @host, @port = Xlogin.factory.open_tunnel(@tunnel, @host, @port) if @tunnel
 
       @mutex   = Mutex.new
-      @loggers = [@config.log].flatten.uniq.reduce({}) { |a, e| a.merge(e => build_logger(e)) }
+      @loggers = [@config.log].flatten.uniq.reduce({}){ |a, e| a.merge(e => build_logger(e)) }
 
       begin
         args = Hash.new
@@ -73,13 +73,13 @@ module Xlogin
     end
 
     def puts(*args, &block)
-      args = args.flat_map { |arg| instance_exec(arg, &@template.interrupt!) }.compact if @template.interrupt!
+      args = args.flat_map{ |arg| instance_exec(arg, &@template.interrupt!) }.compact if @template.interrupt!
       args.empty? ? super('', &block) : super(*args, &block)
     end
 
     def waitfor(*args, &block)
       args = [prompt_pattern] if args.empty?
-      @mutex.synchronize { _waitfor(*args, &block) }
+      @mutex.synchronize{ _waitfor(*args, &block) }
     end
 
     def close
@@ -90,17 +90,13 @@ module Xlogin
           logger.close
         end
 
-        if @gateway
-          @gateway.close(@port)
-          @gateway.shutdown!
-        end
-
+        Xlogin.factory.close_tunnel(@tunnel, @port) if @tunnel
         super
       end
     end
 
     def log(text)
-      @loggers.each { |_, logger| logger.syswrite(text) if logger }
+      @loggers.each{ |_, logger| logger.syswrite(text) if logger }
     end
 
     def enable_log(log = $stdout)
@@ -127,30 +123,13 @@ module Xlogin
         block.call(recv) if block
       end
 
-      _, process = @template.prompt.find { |r, p| r =~ line && p }
+      _, process = @template.prompt.find{ |r, p| r =~ line && p }
       if process
         instance_eval(&process)
         line += _waitfor(*args, &block)
       end
 
       return line
-    end
-
-    def ssh_tunnel(gateway)
-      gateway_uri = Addressable::URI.parse(gateway)
-      case gateway_uri.scheme
-      when 'ssh'
-        username, password = *gateway_uri.userinfo.split(':')
-        @gateway = Net::SSH::Gateway.new(
-          gateway_uri.host,
-          username,
-          password: password,
-          port: gateway_uri.port || 22
-        )
-
-        @port = @gateway.open(@host, @port)
-        @host = '127.0.0.1'
-      end
     end
 
     def build_logger(log)
