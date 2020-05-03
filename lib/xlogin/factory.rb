@@ -1,4 +1,5 @@
 require 'addressable/uri'
+require 'net/ssh/gateway'
 require 'singleton'
 require 'thread'
 require 'xlogin/session_pool'
@@ -16,15 +17,16 @@ module Xlogin
       @mutex     = Mutex.new
     end
 
-    def set_inventory(name, **opts)
-      @inventory[name] = (get_inventory(name) || {name: name}).merge(opts)
+    def set_hostinfo(name, **opts)
+      @inventory[name] = (get_hostinfo(name) || {name: name}).merge(opts)
     end
 
-    def get_inventory(name)
+    def get_hostinfo(name)
       @inventory[name]
     end
 
-    def list_inventory(*patterns)
+    def list_hostinfo(*patterns)
+      return [] if patterns == [nil]
       return @inventory.values if patterns.empty?
 
       values1 = patterns.map do |pattern|
@@ -94,31 +96,25 @@ module Xlogin
     end
 
     def build_from_hostname(args, **opts)
-      hostinfo = get_inventory(args)
+      hostinfo = get_hostinfo(args)
       raise Xlogin::Error.new("Host not found: '#{args}'") unless hostinfo
 
-      build(hostinfo.merge(name: args, **opts))
+      build(**hostinfo.merge(**opts))
     end
 
     def method_missing(method_name, *args, **opts, &block)
-      super unless args.size == 2 && %r{^\S+://\S+} =~ args[1]
+      super unless args.size == 2 && Addressable::URI::URIREGEX =~ args[1]
 
-      type = method_name.to_s.downcase
       name = args[0]
       uri  = args[1]
-      set_inventory(name, type: type, uri: uri, **opts)
+      type = method_name.to_s.downcase
+      set_hostinfo(name.to_s, type: type, uri: uri, **opts)
     end
 
     private
     def uri(**opts)
       return Addressable::URI.parse(opts[:uri].strip) if opts.key?(:uri)
-
-      scheme   = opts[:scheme].strip
-      address  = opts.values_at(:host, :port).compact.map(&:strip).join(':')
-      userinfo = opts[:userinfo].strip
-      userinfo ||= opts.values_at(:username, :password).compact.map(&:strip).join(':')
-
-      Addressable::URI.parse("#{scheme}://" + [userinfo, address].compact.join('@'))
+      Addressable::URI.new(**opts)
     rescue
       raise Xlogin::Error.new("Invalid target - '#{opts}'")
     end

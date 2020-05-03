@@ -1,8 +1,4 @@
-require 'addressable/uri'
-require 'delegate'
 require 'fileutils'
-require 'net/ssh/gateway'
-require 'ostruct'
 require 'stringio'
 require 'thread'
 
@@ -25,13 +21,11 @@ module Xlogin
       @tunnel   = opts[:tunnel] || opts[:via]
       @config   = ReadOnlyStruct.new(opts)
       @template = template
-      @username, @password = uri.userinfo.to_s.split(':')
-
-      max_retry = @config.retry || 1
+      @loggers  = [@config.log].flatten.uniq.reduce({}){ |a, e| a.merge(e => build_log(e)) }
       @host, @port = Xlogin.factory.open_tunnel(@tunnel, @host, @port) if @tunnel
 
-      @mutex   = Mutex.new
-      @loggers = [@config.log].flatten.uniq.reduce({}){ |a, e| a.merge(e => build_logger(e)) }
+      max_retry = @config.retry || 1
+      username, password = uri.userinfo.to_s.split(':')
 
       begin
         args = Hash.new
@@ -43,8 +37,8 @@ module Xlogin
         else
           args['Host'    ] = @host
           args['Port'    ] = @port
-          args['Username'] = @username
-          args['Password'] = @password
+          args['Username'] = username
+          args['Password'] = password
         end
 
         super(args)
@@ -64,43 +58,54 @@ module Xlogin
     end
 
     def prompt_pattern
-      Regexp.union(*@template.prompt.map(&:first))
+      Regexp.union(*@template.prompts.map(&:first))
     end
 
     def duplicate(type: @template.name, **args)
       template = Xlogin::Factory.instance.get_template(type)
+      raise Xlogin::Error.new("Template not found: '#{type}'") unless template
+
       template.build(@uri, **@config.to_h.merge(args))
     end
 
-    def puts(*args, &block)
-      args = args.flat_map{ |arg| instance_exec(arg, &@template.interrupt!) }.compact if @template.interrupt!
-      args.empty? ? super('', &block) : super(*args, &block)
+    def puts(string = '', &block)
+      super(string, &block)
+    end
+
+    def print(string = '', &block)
+      string = instance_exec(string, &@template.interrupt!) if @template.interrupt!
+      super(string, &block)
     end
 
     def waitfor(*args, &block)
-      args = [prompt_pattern] if args.empty?
-      @mutex.synchronize{ _waitfor(*args, &block) }
+      return waitfor(prompt_pattern) if args.empty?
+
+      line = super(*args) do |recv|
+        write_log(recv)
+        block.call(recv) if block
+      end
+
+      _, process = @template.prompts.find{ |r, p| r =~ line && p }
+      if process
+        instance_eval(&process)
+        line += waitfor(*args, &block)
+      end
+
+      return line
     end
 
     def close
-      logout if respond_to?(:logout)
-      @mutex.synchronize do
-        @loggers.each do |_, logger|
-          next if logger.nil? || [$stdout, $stderr].include?(logger)
-          logger.close
-        end
-
-        Xlogin.factory.close_tunnel(@tunnel, @port) if @tunnel
-        super
+      @loggers.each do |_, logger|
+        next if [$stdout, $stderr, nil].include?(logger)
+        logger.close
       end
-    end
 
-    def log(text)
-      @loggers.each{ |_, logger| logger.syswrite(text) if logger }
+      Xlogin.factory.close_tunnel(@tunnel, @port) if @tunnel
+      super
     end
 
     def enable_log(log = $stdout)
-      @loggers.update(log => build_logger(log))
+      @loggers.update(log => build_log(log))
       if block_given?
         yield
         disable_log(log)
@@ -116,23 +121,11 @@ module Xlogin
     end
 
     private
-    def _waitfor(*args, &block)
-      __waitfor = method(:waitfor).super_method
-      line = __waitfor.call(*args) do |recv|
-        log(recv)
-        block.call(recv) if block
-      end
-
-      _, process = @template.prompt.find{ |r, p| r =~ line && p }
-      if process
-        instance_eval(&process)
-        line += _waitfor(*args, &block)
-      end
-
-      return line
+    def write_log(text)
+      @loggers.each{ |_, logger| logger.syswrite(text) if logger }
     end
 
-    def build_logger(log)
+    def build_log(log)
       case log
       when String
         FileUtils.mkdir_p(File.dirname(log))

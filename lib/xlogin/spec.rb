@@ -2,7 +2,7 @@ module Xlogin
   class ExpectationError < StandardError
 
     def initialize(expect, actual)
-      super("Expected to match #{expect}")
+      super(expect)
       @actual = actual
     end
 
@@ -14,28 +14,22 @@ module Xlogin
 
   class Expectation
 
-    def initialize(session, *args)
-      @session = session
-      @args = args
+    def initialize(result)
+      @result = result
     end
 
     def to_match(regexp)
-      return if match(regexp)
-      raise ExpectationError.new(@expect, @actual)
+      regexp = Regexp.new(regexp.to_s) unless regexp.kind_of?(Regexp)
+      return if @result =~ regexp
+
+      raise ExpectationError.new("Expected to match #{regexp}", @result)
     end
 
     def not_to_match(regexp)
-      return unless match(regexp)
-      raise ExpectationError.new(@expect, @actual)
-    end
+      regexp = Regexp.new(regexp.to_s) unless regexp.kind_of?(Regexp)
+      return if @result !~ regexp
 
-    private
-    def match(regexp)
-      regexp  = Regexp.new(regexp.to_s) unless regexp.kind_of?(Regexp)
-      @expect = regexp.inspect
-
-      @actual ||= @session.cmd(*@args)
-      @actual =~ regexp
+      raise ExpectationError.new("Expected not to match #{regexp}", @result)
     end
 
   end
@@ -43,9 +37,8 @@ module Xlogin
   module SessionModule
 
     def expect(*args)
-      Expectation.new(self, *args)
+      Expectation.new(cmd(*args))
     end
-    alias_method :exp, :expect
 
   end
 end

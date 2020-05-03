@@ -22,7 +22,7 @@ module Xlogin
 
   class << self
     def list(*patterns)
-      factory.list_inventory(*patterns)
+      factory.list_hostinfo(*patterns)
     end
 
     def find(*patterns)

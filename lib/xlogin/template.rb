@@ -8,15 +8,27 @@ module Xlogin
     DEFAULT_PROMPT   = /[$%#>] ?\z/n
     RESERVED_METHODS = %i( login logout enable disable )
 
-    attr_reader :name, :scopes, :methods
+    attr_reader :name, :methods
 
     def initialize(name)
       @name    = name
-      @scopes  = Hash.new
-      @timeout = DEFAULT_TIMEOUT
       @prompts = Array.new
       @methods = Hash.new
+      @timeout = DEFAULT_TIMEOUT
       @interrupt = nil
+    end
+
+    def prompt(expect, &block)
+      @prompts << [Regexp.new(expect.to_s), block]
+    end
+
+    def prompts
+      @prompts << [DEFAULT_PROMPT, nil] if @prompts.empty?
+      @prompts
+    end
+
+    def bind(name, &block)
+      @methods[name] = block
     end
 
     def timeout(val = nil)
@@ -24,38 +36,16 @@ module Xlogin
       @timeout
     end
 
-    def prompt(expect = nil, &block)
-      return [[DEFAULT_PROMPT, nil]] if expect.nil? && @prompts.empty?
-      @prompts << [Regexp.new(expect.to_s), block] if expect
-      @prompts
-    end
-
-    def scope(name = nil, &block)
-      @scopes[name] = block
-    end
-
-    def bind(name = nil, &block)
-      @methods[name] = block
-    end
-
     def interrupt!(&block)
-      return @interrupt unless block
-      @interrupt = block
+      @interrupt = block if block
+      @interrupt
     end
 
     def build(uri, **opts)
       klass = Class.new(Xlogin.const_get(uri.scheme.capitalize))
       klass.class_exec(self) do |template|
-        scopes = [*opts[:scope]].compact
-        scopes.each{ |scope| template.instance_eval(&template.scopes[scope]) }
-
         template.methods.each do |name, block|
-          case name.to_s
-          when 'enable'
-            define_method(name){ |args = nil| instance_exec(args || opts[:enable], &block) }
-          else
-            define_method(name, &block)
-          end
+          define_method(name, &block)
         end
       end
 

@@ -37,8 +37,8 @@ module Xlogin
     end
 
     def close
-      while @queue.empty?
-        session, _, _ = @queue.deq
+      until @queue.empty?
+        session, _ = @queue.deq
         destroy(session)
       end
     end
@@ -58,10 +58,10 @@ module Xlogin
       end
 
       begin
-        raise IOError if session.sock.closed?
+        raise IOError if session&.sock&.closed?
       rescue IOError, EOFError, Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
         destroy(session)
-        session = deq
+        return deq
       end
 
       session
