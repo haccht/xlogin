@@ -38,7 +38,7 @@ module Xlogin
             @sock.syswrite(bs)
           when @sock
             begin
-              log(fh.readpartial(1024))
+              write_log(fh.readpartial(1024))
             rescue Errno::EAGAIN
               retry
             end
@@ -47,7 +47,7 @@ module Xlogin
       end
     rescue EOFError, Errno::ECONNRESET
       $stdout.puts "\r\n", "Conneciton closed.", "\r\n"
-      self.close
+      close
     ensure
       $stdin.cooked!
     end

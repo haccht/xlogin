@@ -101,7 +101,7 @@ module Xlogin
     end
 
     def log_text(text)
-      text.lines.map{ |line| "#{Time.now.iso8601} - #{name}\t|#{line.gsub(/^\s*[\r]+/, '')}" }.join
+      text.lines.map{ |line| "#{Time.now.iso8601} - #{name}\t|#{line.gsub(/^.*\r/, '')}" }.join
     end
 
   end
@@ -109,7 +109,7 @@ module Xlogin
   module SessionModule
 
     def comment(line, prefix: "[INFO]", chomp: false, **color)
-      write_log("#{prefix} #{line}".colorize(**color))
+      write_log("#{prefix} #{line}".colorize({color: :light_white}.merge(**color)))
       cmd('') unless chomp
     end
 

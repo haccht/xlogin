@@ -26,10 +26,9 @@ module Xlogin
     end
 
     def list_hostinfo(*patterns)
-      return [] if patterns == [nil]
       return @inventory.values if patterns.empty?
 
-      values1 = patterns.map do |pattern|
+      values1 = patterns.compact.map do |pattern|
         values2 = pattern.split(',').map do |entry|
           key, val = entry.to_s.split(':')
           key, val = 'name', key if val.nil?

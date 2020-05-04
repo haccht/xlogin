@@ -25,7 +25,7 @@ module Xlogin
     end
 
     def exec(config)
-      Signal.trap(:INT){ exit 0 }
+      Signal.trap(:INT){ exit 1 }
 
       jobs  = config[:jobs] || 1
       hosts = Xlogin.list(*config[:patterns])
@@ -48,9 +48,9 @@ module Xlogin
           command_lines = config[:command].flat_map { |e| e.to_s.split(';').map(&:strip) }
           command_lines.each{ |line| session.cmd(line) }
 
-          buffer.string.lines.each{ |line| print prefix + line.gsub("\r", '') } if jobs > 1
+          buffer.string.lines.each{ |line| print prefix + line.gsub(/^.*\r/, '') } if jobs > 1
         rescue => e
-          buffer.string.lines.each{ |line| print prefix + line.gsub("\r", '') } if jobs > 1
+          buffer.string.lines.each{ |line| print prefix + line.gsub(/^.*\r/, '') } if jobs > 1
           raise e
         end
 
