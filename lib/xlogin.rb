@@ -34,7 +34,7 @@ module Xlogin
                 when Hash   then factory.build(**args.merge(**opts))
                 when String then factory.build_from_hostname(args, **opts)
                 else
-                  raise SessionError.new("Invalid argument: '#{args}'")
+                  raise Xlogin::Error.new("Invalid argument: '#{args}'")
                 end
 
       return session unless block

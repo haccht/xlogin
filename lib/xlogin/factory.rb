@@ -34,9 +34,9 @@ module Xlogin
           key, val = 'name', key if val.nil?
           @inventory.values.select{ |e| File.fnmatch(val, e[key.to_sym]) }
         end
-        values2.reduce(&:&)
+        values2.reduce(&:&) || []
       end
-      values1.reduce(&:|)
+      values1.reduce(&:|) || []
     end
 
     def set_template(name, text = nil, &block)

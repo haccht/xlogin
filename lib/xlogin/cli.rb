@@ -91,6 +91,7 @@ module Xlogin
         template *config[:template].map { |e| File.expand_path(e, ENV['PWD']) }
       end
 
+      raise Xlogin::Error.new("Invalid host pattern: '#{config[:patterns].join(' ')}'") if Xlogin.list(*config[:patterns]).empty?
       config[:runner].call(config)
     rescue => e
       $stderr.puts e, '', parser
