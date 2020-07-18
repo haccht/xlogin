@@ -92,7 +92,7 @@ module Xlogin
     rescue => e
       RakeTask.shutdown! if fail_on_error
 
-      session.comment(e.to_s, prefix: "[ERROR]", chomp: true, color: :white, background: :red)
+      session.comment(e.to_s, prefix: "[ERROR]", chomp: true, color: :white, background: :red) if session
       $stderr.print log_text(buffer.string + "\n").colorize(color: :light_red) if Rake.application.options.always_multitask
 
       return false
