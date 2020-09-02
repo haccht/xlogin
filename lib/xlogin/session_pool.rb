@@ -13,20 +13,12 @@ module Xlogin
       @args = args
       @opts = opts
 
-      @size = DEFAULT_POOL_SIZE
-      @idle = DEFAULT_POOL_IDLE
+      @size = @opts.delete(:pool_size) || DEFAULT_POOL_SIZE
+      @idle = @opts.delete(:pool_idle) || DEFAULT_POOL_IDLE
 
       @mutex = Mutex.new
       @queue = Queue.new
-      @created  = 0
-    end
-
-    def size=(val)
-      @mutex.synchronize{ @size = val }
-    end
-
-    def idle=(val)
-      @mutex.synchronize{ @idle = val }
+      @count = 0
     end
 
     def with
@@ -38,20 +30,22 @@ module Xlogin
 
     def close
       until @queue.empty?
-        session, _ = @queue.deq
+        session, _, _ = @queue.deq
         destroy(session)
       end
     end
 
     def deq
       @mutex.synchronize do
-        if @queue.empty? && @created < @size
-          @created += 1
+        if @queue.empty? && @count < @size
+          @count += 1
           return Xlogin.get(@args, **@opts)
         end
       end
 
-      session, last_used = @queue.deq
+      session, last_used, watch_dog = @queue.deq
+
+      watch_dog.kill
       if Time.now - last_used > @idle
         destroy(session)
         return deq
@@ -59,23 +53,24 @@ module Xlogin
 
       begin
         raise IOError if session&.sock&.closed?
+        return session
       rescue IOError, EOFError, Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
         destroy(session)
         return deq
       end
-
-      session
     end
 
     def enq(session)
       last_used = Time.now
-      @queue.enq [session, last_used]
+      watch_dog = Thread.new(session){ |s| sleep(@idle * 1.5) && s.close rescue nil }
+      @queue.enq [session, last_used, watch_dog]
     end
 
+    private
     def destroy(session)
       @mutex.synchronize do
         session.close rescue nil
-        @created -= 1
+        @count -= 1
       end
     end
 

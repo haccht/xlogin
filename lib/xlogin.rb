@@ -40,15 +40,13 @@ module Xlogin
       return session unless block
       begin block.call(session) ensure session.close end
     end
-    alias_method :create, :get
 
-    def get_pool(args, **opts, &block)
+    def pool(args, **opts, &block)
       pool = factory.build_pool(args, **opts)
 
       return pool unless block
       begin block.call(pool) ensure pool.close end
     end
-    alias_method :create_pool, :get_pool
 
     def configure(&block)
       instance_eval(&block)

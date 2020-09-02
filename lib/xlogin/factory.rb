@@ -13,7 +13,7 @@ module Xlogin
     def initialize
       @inventory = Hash.new
       @templates = Hash.new
-      @gateways  = Hash.new
+      @tunnels   = Hash.new
       @mutex     = Mutex.new
     end
 
@@ -54,32 +54,40 @@ module Xlogin
       @templates.keys
     end
 
-    def open_tunnel(tunnel, host, port)
+    def open_tunnel(name, host, port)
       @mutex.synchronize do
-        unless @gateways[tunnel]
-          gateway_uri = Addressable::URI.parse(tunnel)
-          case gateway_uri.scheme
+        unless @tunnels[name]
+          uri = Addressable::URI.parse(name)
+          case uri.scheme
           when 'ssh'
-            username, password = *gateway_uri.userinfo.split(':')
-            @gateways[tunnel] = Net::SSH::Gateway.new(
-              gateway_uri.host,
+            username, password = *uri.userinfo.split(':')
+            gateway = Net::SSH::Gateway.new(
+              uri.host,
               username,
               password: password,
-              port: gateway_uri.port || 22
+              port: uri.port || 22
             )
+
+             @tunnels[name] = Struct.new('Tunnel', :gateway, :ports).new(gateway, [])
           end
         end
 
-        gateway = @gateways[tunnel]
-        return host, port unless gateway
-        return '127.0.0.1', gateway.open(host, port)
+        if tunnel = @tunnels[name]
+          port = tunnel.gateway.open(host, port)
+          host = '127.0.0.1'
+          tunnel.ports << port
+        end
+        return host, port
       end
     end
 
-    def close_tunnel(tunnel, port)
+    def close_tunnel(name, port)
       @mutex.synchronize do
-        gateway = @gateways[tunnel]
-        gateway.close(port) if gateway
+        if tunnel = @tunnels[name]
+          tunnel.ports.delete(port)
+          tunnel.gateway.close(port)
+          tunnel.gateway.shutdown! if tunnel.ports.empty?
+        end
       end
     end
 
