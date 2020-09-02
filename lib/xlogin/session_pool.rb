@@ -7,14 +7,14 @@ module Xlogin
     DEFAULT_POOL_SIZE = 1
     DEFAULT_POOL_IDLE = 60
 
-    attr_reader :size, :idle
+    attr_accessor :size, :idle
 
     def initialize(args, **opts)
       @args = args
       @opts = opts
 
-      @size = @opts.delete(:pool_size) || DEFAULT_POOL_SIZE
-      @idle = @opts.delete(:pool_idle) || DEFAULT_POOL_IDLE
+      @size = DEFAULT_POOL_SIZE
+      @idle = DEFAULT_POOL_IDLE
 
       @mutex = Mutex.new
       @queue = Queue.new
