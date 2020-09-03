@@ -56,7 +56,8 @@ module Xlogin
 
     def open_tunnel(name, host, port)
       @mutex.synchronize do
-        unless @tunnels[name]
+        tunnel = @tunnels[name]
+        unless tunnel && tunnel.gateway.active?
           uri = Addressable::URI.parse(name)
           case uri.scheme
           when 'ssh'
