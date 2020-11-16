@@ -92,10 +92,9 @@ module Xlogin
     rescue => e
       RakeTask.shutdown! if fail_on_error
 
-      session.comment(e.to_s, prefix: "[ERROR]", chomp: true, color: :red) if session
-      if Rake.application.options.always_multitasK
-        $stderr.print log_text(buffer.string + "\n").colorize(color: :red) unless buffer.string.empty?
-        $stderr.print log_text(e.to_s + "\n").colorize(color: :red)
+      session.comment(e.to_s, lf: false, color: :red) if session
+      if Rake.application.options.always_multitask && !buffer.string.empty?
+        $stderr.print log_text(buffer.string + "\n").colorize(color: :red)
       end
 
       return false
@@ -104,16 +103,16 @@ module Xlogin
     end
 
     def log_text(text)
-      text.lines.map{ |line| "#{Time.now.iso8601} - #{name}\t|#{line.gsub(/^.*\r/, '')}" }.join
+      text.lines.map{ |line| "#{Time.now.iso8601} #{name}\t|#{line.gsub(/^.*\r/, '')}" }.join
     end
 
   end
 
   module SessionModule
 
-    def comment(line, prefix: "[INFO]", chomp: false, **color)
-      write_log("#{prefix} #{line}".colorize({color: :light_white}.merge(**color)))
-      cmd('') unless chomp
+    def comment(line, lf: true, **color)
+      write_log(line.chomp.colorize({color: :light_white}.merge(**color)))
+      cmd('') if lf
     end
 
   end
