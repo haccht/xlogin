@@ -24,7 +24,7 @@ module Xlogin
       @loggers  = [@config.log].flatten.uniq.reduce({}){ |a, e| a.merge(e => build_log(e)) }
       @host, @port = Xlogin.factory.open_tunnel(@tunnel, @host, @port) if @tunnel
 
-      max_retry = @config.retry || 1
+      num_try = 0
       username, password = uri.userinfo.to_s.split(':')
 
       begin
@@ -43,7 +43,7 @@ module Xlogin
 
         super(args)
       rescue => e
-        retry if (max_retry -= 1) > 0
+        retry unless (num_try += 1) > (@config.retry || 0)
         raise e
       end
     end

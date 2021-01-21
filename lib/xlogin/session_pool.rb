@@ -43,9 +43,9 @@ module Xlogin
         end
       end
 
-      session, last_used, watch_dog = @queue.deq
+      session, last_used, watchdog = @queue.deq
 
-      watch_dog.kill
+      watchdog.kill
       if Time.now - last_used > @idle
         destroy(session)
         return deq
@@ -62,8 +62,8 @@ module Xlogin
 
     def enq(session)
       last_used = Time.now
-      watch_dog = Thread.new(session){ |s| sleep(@idle * 1.5) && s.close rescue nil }
-      @queue.enq [session, last_used, watch_dog]
+      watchdog = Thread.new(session){ |s| sleep(@idle * 1.5) && s.close rescue nil }
+      @queue.enq [session, last_used, watchdog]
     end
 
     private
