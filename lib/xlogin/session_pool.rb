@@ -25,7 +25,7 @@ module Xlogin
       session = deq
       Thread.handle_interrupt(Exception => :immediate){ yield session }
     ensure
-      enq session
+      enq session if session
     end
 
     def close
@@ -38,8 +38,9 @@ module Xlogin
     def deq
       @mutex.synchronize do
         if @queue.empty? && @count < @size
+          session = Xlogin.get(@args, **@opts)
           @count += 1
-          return Xlogin.get(@args, **@opts)
+          return session
         end
       end
 
