@@ -44,7 +44,7 @@ module Xlogin
         super(args)
       rescue => e
         unless (num_try += 1) > (@config.retry || 0)
-          sleep 1.0
+          sleep 2.0 ** (num_try)
           retry 
         end
         raise e
