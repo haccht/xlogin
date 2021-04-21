@@ -21,12 +21,12 @@ module Xlogin
   end
 
   class << self
-    def list(*patterns)
-      factory.list_hostinfo(*patterns)
-    end
-
     def find(*patterns)
       list(*patterns).first
+    end
+
+    def list(*patterns)
+      factory.list_hostinfo(*patterns)
     end
 
     def get(args, **opts, &block)

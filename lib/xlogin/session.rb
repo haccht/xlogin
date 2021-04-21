@@ -45,7 +45,7 @@ module Xlogin
       rescue => e
         unless (num_try += 1) > (@config.retry || 0)
           sleep 2.0 ** (num_try)
-          retry 
+          retry
         end
         raise e
       end
@@ -84,7 +84,7 @@ module Xlogin
       return waitfor(prompt_pattern) if args.empty?
 
       line = super(*args) do |recv|
-        write_log(recv)
+        log_message(recv)
         block.call(recv) if block
       end
 
@@ -123,11 +123,11 @@ module Xlogin
       end
     end
 
-    private
-    def write_log(text)
+    def log_message(text)
       @loggers.each{ |_, logger| logger.syswrite(text) if logger }
     end
 
+    private
     def build_log(log)
       case log
       when String

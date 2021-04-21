@@ -78,41 +78,36 @@ module Xlogin
 
     def run_task
       buffer  = StringIO.new
-      loggers = []
-      loggers << log     if log
-      loggers << $stdout if !silent && !Rake.application.options.always_multitask
-      loggers << buffer
+      loggers = [buffer]
+      loggers << log    if log
+      loggers << STDOUT if !silent && !Rake.application.options.always_multitask
 
       session = Xlogin.get(name, log: loggers, timeout: timeout)
+      instance_exec(session, &@runner)
 
-      @runner.call(session)
-      $stdout.print log_text(buffer.string) if !silent && Rake.application.options.always_multitask
-
+      print(buffer.string) if !silent && Rake.application.options.always_multitask
       return true
     rescue => e
       RakeTask.shutdown! if fail_on_error
 
-      session.comment(e.to_s, lf: false, color: :red) if session
-      if Rake.application.options.always_multitask && !buffer.string.empty?
-        $stderr.print log_text(buffer.string + "\n").colorize(color: :red)
-      end
-
+      session.log_message(e.to_s.colorize(color: :red)) if session
+      print(buffer.string + "\n", color: :red) if Rake.application.options.always_multitask
       return false
     ensure
       session.close rescue nil
     end
 
-    def log_text(text)
-      text.lines.map{ |line| "#{Time.now.iso8601} #{name}\t|#{line.gsub(/^.*\r/, '')}" }.join
+    def puts(text, **opt)
+      print(text + "\n", **opt)
     end
 
-  end
+    def print(text, **opt)
+      return if text.empty?
 
-  module SessionModule
-
-    def comment(line, lf: true, **color)
-      write_log(line.chomp.colorize({color: :light_white}.merge(**color)))
-      cmd('') if lf
+      text = text.gsub("\r", '')
+      text = text.lines.map{ |line| "#{name}\t|#{line}" }.join if Rake.application.options.always_multitask
+      text = text.colorize(**opt)
+      $stdout.print(text)
     end
 
   end

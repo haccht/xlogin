@@ -26,7 +26,7 @@ module Xlogin
     end
 
     def list_hostinfo(*patterns)
-      patterns = patterns.flat_map{ |e| e.split(/\s+/) }.compact
+      patterns = patterns.compact.flat_map{ |e| e.split(/\s+/) }
       return @inventory.values if patterns.empty?
 
       values1 = patterns.map do |pattern|
