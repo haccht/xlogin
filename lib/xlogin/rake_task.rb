@@ -10,16 +10,18 @@ module Xlogin
     class << self
       include Rake::DSL
 
-      def generate(*patterns, **opts, &block)
-        description = Rake.application.last_description
+      def all(*patterns, &block)
+        patterns    = patterns.empty? ? ENV['target'] : patterns
         hostnames   = Xlogin.list(*patterns).map{ |e| e[:name] }
+        description = Rake.application.last_description
 
-        task 'all' => hostnames unless opts[:all] == false
+        task 'all' => hostnames
         hostnames.each do |hostname|
-          desc "#{description} with #{hostname}"
+          desc "#{description} - #{hostname}" if description
           RakeTask.new(hostname, &block)
         end
       end
+      alias_method :generate, :all
 
       def shutdown!
         @stop = true
@@ -97,16 +99,21 @@ module Xlogin
       session.close rescue nil
     end
 
-    def puts(text, **opt)
-      print(text + "\n", **opt)
+    def puts(text, **opts)
+      return text.each { |e| puts(e, **opts) } if text.kind_of?(Array)
+
+      text = text.to_s
+      text = text + "\n" unless text[-1] == "\n"
+      print(text, **opts)
     end
 
-    def print(text, **opt)
+    def print(text, **opts)
+      text = text.to_s
       return if text.empty?
 
       text = text.gsub("\r", '')
-      text = text.lines.map{ |line| "#{name}\t|#{line}" }.join if Rake.application.options.always_multitask
-      text = text.colorize(**opt)
+      text = text.lines.map{ |text| "#{name}\t|#{text}" }.join if Rake.application.options.always_multitask
+      text = text.colorize(**opts)
       $stdout.print(text)
     end
 
