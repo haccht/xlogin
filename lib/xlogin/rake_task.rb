@@ -11,17 +11,22 @@ module Xlogin
       include Rake::DSL
 
       def all(*patterns, &block)
-        patterns    = patterns.empty? ? ENV['target'] : patterns
-        hostnames   = Xlogin.list(*patterns).map{ |e| e[:name] }
+        description = Rake.application.last_description
+        task all: Xlogin.list(*patterns).map{ |e| e[:name] }
+
+        desc description
+        generate(*patterns, &block)
+      end
+
+      def generate(*patterns, &block)
         description = Rake.application.last_description
 
-        task 'all' => hostnames
+        hostnames = Xlogin.list(*patterns).map{ |e| e[:name] }
         hostnames.each do |hostname|
           desc "#{description} - #{hostname}" if description
           RakeTask.new(hostname, &block)
         end
       end
-      alias_method :generate, :all
 
       def shutdown!
         @stop = true
