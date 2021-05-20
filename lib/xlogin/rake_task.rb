@@ -66,8 +66,10 @@ module Xlogin
 
     private
     def define
-      mkdir_p(File.dirname(log),  verbose: Rake.application.options.trace) if log
-      mkdir_p(File.dirname(lock), verbose: Rake.application.options.trace) if lock
+      self.log  = File.join(Dir.pwd, 'log',  name + '.log')   if self.log  == true
+      self.lock = File.join(Dir.pwd, 'lock', name_with_scope) if self.lock == true
+      mkdir_p(File.dirname(self.log),  verbose: Rake.application.options.trace) if self.log
+      mkdir_p(File.dirname(self.lock), verbose: Rake.application.options.trace) if self.lock
 
       if lock
         task(name => lock)
