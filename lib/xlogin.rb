@@ -30,22 +30,16 @@ module Xlogin
     end
 
     def get(args, **opts, &block)
-      session = case args
-                when Hash   then factory.build(**args.merge(**opts))
-                when String then factory.build_from_hostname(args, **opts)
-                else
-                  raise Xlogin::Error.new("Invalid argument: '#{args}'")
-                end
-
-      return session unless block
-      begin block.call(session) ensure session.close end
+      case args
+      when Hash   then factory.build(**args.merge(**opts), &block)
+      when String then factory.build_from_hostname(args, **opts, &block)
+      else
+        raise Xlogin::Error.new("Invalid argument: '#{args}'")
+      end
     end
 
     def pool(args, **opts, &block)
-      pool = factory.build_pool(args, **opts)
-
-      return pool unless block
-      begin block.call(pool) ensure pool.close end
+      factory.build_pool(args, **opts, &block)
     end
 
     def configure(&block)

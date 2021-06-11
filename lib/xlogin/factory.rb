@@ -93,22 +93,26 @@ module Xlogin
       end
     end
 
-    def build(type:, **opts)
+    def build(type:, **opts, &block)
       template = get_template(type)
       raise Xlogin::Error.new("Template not found: '#{type}'") unless template
 
-      template.build(uri(opts), **opts)
+      session = template.build(uri(opts), **opts)
+      return session unless block
+      begin block.call(session) ensure session.close end
     end
 
-    def build_pool(args, **opts)
-      Xlogin::SessionPool.new(args, **opts)
+    def build_pool(args, **opts, &block)
+      pool = Xlogin::SessionPool.new(args, **opts)
+      return pool unless block
+      begin block.call(pool) ensure pool.close end
     end
 
-    def build_from_hostname(args, **opts)
+    def build_from_hostname(args, **opts, &block)
       hostinfo = get_hostinfo(args)
       raise Xlogin::Error.new("Host not found: '#{args}'") unless hostinfo
 
-      build(**hostinfo.merge(**opts))
+      build(**hostinfo.merge(**opts), &block)
     end
 
     def method_missing(method_name, *args, **opts, &block)

@@ -10,9 +10,9 @@ module Xlogin
 
     def initialize(template, uri, **opts)
       @uri  = uri
-      @host = uri.host
-      @port = uri.port
-      @port ||= case @uri.scheme
+      @host = opts[:host] || uri.host
+      @port = opts[:port] || uri.port
+      @port ||= case opts[:scheme] || uri.scheme
                 when 'ssh'    then 22
                 when 'telnet' then 23
                 end
@@ -25,7 +25,7 @@ module Xlogin
       @host, @port = Xlogin.factory.open_tunnel(@tunnel, @host, @port) if @tunnel
 
       num_try = 0
-      username, password = uri.userinfo.to_s.split(':')
+      username, password = (opts[:userinfo] || uri.userinfo).to_s.split(':')
 
       begin
         args = Hash.new
@@ -64,11 +64,9 @@ module Xlogin
       Regexp.union(*@template.prompts.map(&:first))
     end
 
-    def duplicate(type: @template.name, **args)
-      template = Xlogin::Factory.instance.get_template(type)
-      raise Xlogin::Error.new("Template not found: '#{type}'") unless template
-
-      template.build(@uri, **@config.to_h.merge(args))
+    def duplicate(type: @template.name, uri: @uri.dup, **args, &block)
+      args = @config.to_h.merge(args)
+      Xlogin::Factory.instance.build(type: type, uri: uri, **args, &block)
     end
 
     def puts(string = '', &block)
