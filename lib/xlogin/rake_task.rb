@@ -100,27 +100,25 @@ module Xlogin
       RakeTask.shutdown! if fail_on_error
 
       session.log_message(e.to_s.colorize(color: :red)) if session
-      print(buffer.string + "\n", color: :red) if Rake.application.options.always_multitask
+      print(buffer.string.colorize(color: :red) + "\n") if Rake.application.options.always_multitask
       return false
     ensure
       session.close rescue nil
     end
 
-    def puts(text, **opts)
-      return text.each { |e| puts(e, **opts) } if text.kind_of?(Array)
-
-      text = text.to_s
-      text = text + "\n" unless text[-1] == "\n"
-      print(text, **opts)
+    def puts(text)
+      strio = StringIO.new.tap{ |io| io.puts text }
+      print(strio.string)
     end
 
-    def print(text, **opts)
-      text = text.to_s
+    def print(text)
+      text = text.to_s.gsub("\r", '')
       return if text.empty?
 
-      text = text.gsub("\r", '')
-      text = text.lines.map{ |text| "#{name}\t|#{text}" }.join if Rake.application.options.always_multitask
-      text = text.colorize(**opts)
+      if Rake.application.options.always_multitask
+        strio = StringIO.new.tap{ |io| io.puts text.lines.map{ |line| "#{name}\t|#{line}" } }
+        text = strio.string
+      end
       $stdout.print(text)
     end
 

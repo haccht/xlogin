@@ -42,7 +42,7 @@ module Xlogin
           loggers << ((jobs > 1)? buffer : $stdout)
           loggers << File.expand_path(File.join(config[:logdir], "#{info[:name]}.log"), ENV['PWD']) if config[:logdir]
 
-          session = Xlogin.get(info.merge(log: loggers))
+          session = Xlogin.get(info.merge(log: loggers, **config[:env]))
           session.enable(session.config.enable) if session.config.enable && Xlogin.settings.enable?
 
           command_lines = config[:command].flat_map { |e| e.to_s.split(';').map(&:strip) }
@@ -60,7 +60,7 @@ module Xlogin
 
     def run(args)
       config = Hash.new
-      config[:env]       = []
+      config[:env]       = {}
       config[:inventory] = []
       config[:template]  = []
       config[:command]   = []
@@ -70,23 +70,21 @@ module Xlogin
       parser.banner  = "#{File.basename($0)} HOST_PATTERN [Options]"
       parser.version = Xlogin::VERSION
 
-      parser.on('-i PATH', '--inventory', String, 'The PATH to the inventory file.')            { |v| config[:inventory] << v }
-      parser.on('-t PATH', '--template',  String, 'The PATH to the template file or directory.'){ |v| config[:template]  << v }
-      parser.on('-L PATH', '--log-dir',   String, 'The PATH to the log directory.')             { |v| config[:logdir]     = v }
-
-      parser.on('-l',         '--list',   TrueClass, 'List the inventory.')       { |v| config[:runner] = self.method(:list) }
+      parser.on('-i PATH', '--inventory', String,  'The PATH to the inventory file.')            { |v| config[:inventory] << v }
+      parser.on('-t PATH', '--template',  String,  'The PATH to the template file or directory.'){ |v| config[:template]  << v }
+      parser.on('-L PATH', '--log-dir',   String,  'The PATH to the log directory.')             { |v| config[:logdir]     = v }
+      parser.on('-j NUM',  '--jobs',      Integer, 'The NUM of jobs to execute in parallel.')    { |v| config[:jobs] = v }
+      parser.on(           '--enable',    TrueClass, 'Automatically enable privilege mode.')     { |v| config[:enable] = v }
+      parser.on('-l',      '--list',      TrueClass, 'List the inventory.')       { |v| config[:runner] = self.method(:list) }
       parser.on('-e COMMAND', '--exec',   String,    'Execute commands and quit.'){ |v| config[:runner] = self.method(:exec); config[:command] << v }
-
-      parser.on('-E KEY=VAL', '--env',    /(\w+=\w+)+/, 'Environment variables.')                 { |v| config[:env] << v }
-      parser.on('-j NUM',     '--jobs',   Integer,      'The NUM of jobs to execute in parallel.'){ |v| config[:jobs] = v }
+      parser.on('-E KEY=VAL', '--env',    /\w+=[^=]+/, 'Environment variables.')  { |v| v.split('=').tap{ |k, v| config[:env].update(k.to_sym => v) } }
 
       config[:patterns]  = parser.parse!(args)
       config[:inventory] << DEFAULT_INVENTORY if config[:inventory].empty?
       config[:template]  << DEFAULT_TEMPLATE  if config[:template].empty?
 
       Xlogin.configure do
-        set Hash[config[:env].map{ |v| v.split('=') }]
-
+        set enable: config[:enable]
         source   *config[:inventory].map{ |e| File.expand_path(e, ENV['PWD']) }
         template *config[:template].map { |e| File.expand_path(e, ENV['PWD']) }
       end
