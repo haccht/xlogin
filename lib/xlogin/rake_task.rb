@@ -10,21 +10,21 @@ module Xlogin
     class << self
       include Rake::DSL
 
-      def all(*patterns, &block)
+      def all(*patterns, **opts, &block)
         description = Rake.application.last_description
         task all: Xlogin.list(*patterns).map{ |e| e[:name] }
 
         desc description
-        generate(*patterns, &block)
+        generate(*patterns, **opts, &block)
       end
 
-      def generate(*patterns, &block)
+      def generate(*patterns, **opts, &block)
         description = Rake.application.last_description
 
         hostnames = Xlogin.list(*patterns).map{ |e| e[:name] }
         hostnames.each do |hostname|
           desc "#{description} - #{hostname}" if description
-          RakeTask.new(hostname, &block)
+          RakeTask.new(hostname, **opts, &block)
         end
       end
 
@@ -40,14 +40,13 @@ module Xlogin
     attr_reader   :name
     attr_accessor :log
     attr_accessor :lock
-    attr_accessor :timeout
     attr_accessor :silent
     attr_accessor :fail_on_error
 
-    def initialize(name)
+    def initialize(name, **opts)
       @name     = name
+      @opts     = opts
       @runner   = nil
-      @timeout  = nil
       @silent ||= Rake.application.options.silent
       @fail_on_error = true
 
@@ -91,7 +90,7 @@ module Xlogin
       loggers << log    if log
       loggers << STDOUT if !silent && !Rake.application.options.always_multitask
 
-      session = Xlogin.get(name, log: loggers, timeout: timeout)
+      session = Xlogin.get(name, log: loggers, **@opts)
       instance_exec(session, &@runner)
 
       print(buffer.string) if !silent && Rake.application.options.always_multitask
