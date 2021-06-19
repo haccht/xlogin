@@ -25,7 +25,7 @@ module Xlogin
       @host, @port = Xlogin.factory.open_tunnel(@tunnel, @host, @port) if @tunnel
 
       num_try = 0
-      username, password = (opts[:userinfo] || uri.userinfo).to_s.split(':')
+      username, password = (opts[:userinfo] || ENV['USERINFO'] || uri.userinfo).to_s.split(':')
 
       begin
         args = Hash.new
