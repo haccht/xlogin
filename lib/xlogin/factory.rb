@@ -6,6 +6,10 @@ require 'xlogin/session_pool'
 require 'xlogin/template'
 
 module Xlogin
+
+  # gateway tunnel
+  Tunnel = Struct.new('Tunnel', :gateway, :ports)
+
   class Factory
 
     include Singleton
@@ -70,7 +74,7 @@ module Xlogin
               port: uri.port || 22
             )
 
-             @tunnels[name] = Struct.new('Tunnel', :gateway, :ports).new(gateway, [])
+             @tunnels[name] = Xlogin::Tunnel.new(gateway, [])
           end
         end
 
