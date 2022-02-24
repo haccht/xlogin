@@ -101,7 +101,7 @@ module Xlogin
       template = get_template(type)
       raise Xlogin::Error.new("Template not found: '#{type}'") unless template
 
-      session = template.build(uri(opts), **opts)
+      session = template.build(uri(**opts), **opts)
       return session unless block
       begin block.call(session) ensure session.close end
     end
