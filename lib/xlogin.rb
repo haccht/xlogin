@@ -29,9 +29,9 @@ module Xlogin
       factory.list_hostinfo(*patterns)
     end
 
-    def get(args, **opts, &block)
+    def get(args = nil, **opts, &block)
       case args
-      when Hash   then factory.build(**args.merge(**opts), &block)
+      when nil    then factory.build(**opts, &block)
       when String then factory.build_from_hostname(args, **opts, &block)
       else
         raise Xlogin::Error.new("Invalid argument: '#{args}'")
