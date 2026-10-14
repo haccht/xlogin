@@ -86,7 +86,7 @@ module Xlogin
       Xlogin.configure do
         set enable: config[:enable]
         source   *config[:inventory].map{ |e| File.expand_path(e, ENV['PWD']) }
-        template *config[:template].map { |e| File.expand_path(e, ENV['PWD']) }
+        template *config[:template].map { |e| e =~ %r{^https?://\S+} ? e : File.expand_path(e, ENV['PWD']) }
       end
 
       raise Xlogin::Error.new("Invalid host pattern: '#{config[:patterns].join(' ')}'") if Xlogin.list(*config[:patterns]).empty?

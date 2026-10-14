@@ -53,7 +53,7 @@ module Xlogin
       end
 
       begin
-        raise IOError if session&.sock&.closed?
+        raise IOError if session.nil? || (session.respond_to?(:closed?) ? session.closed? : (session.respond_to?(:sock) && session.sock&.closed?))
         return session
       rescue IOError, EOFError, Errno::ECONNABORTED, Errno::ECONNREFUSED, Errno::ECONNRESET
         destroy(session)

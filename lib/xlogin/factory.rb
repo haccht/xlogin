@@ -37,7 +37,7 @@ module Xlogin
         values2 = pattern.split(',').map do |entry|
           key, val = entry.to_s.split(':')
           key, val = 'name', key if val.nil?
-          @inventory.values.select{ |e| File.fnmatch(val, e[key.to_sym], File::FNM_EXTGLOB) }
+          @inventory.values.select{ |e| e.key?(key.to_sym) && File.fnmatch(val, e[key.to_sym].to_s, File::FNM_EXTGLOB) }
         end
         values2.reduce(&:&) || []
       end

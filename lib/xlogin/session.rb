@@ -49,6 +49,7 @@ module Xlogin
           sleep 2.0 ** (num_try)
           retry
         end
+        Xlogin.factory.close_tunnel(@tunnel, @port) if @tunnel
         raise e
       end
     end
@@ -105,6 +106,16 @@ module Xlogin
 
       Xlogin.factory.close_tunnel(@tunnel, @port) if @tunnel
       super
+    end
+
+    def closed?
+      if respond_to?(:sock)
+        sock.nil? || sock.closed?
+      elsif respond_to?(:ssh)
+        ssh.nil? || ssh.closed?
+      else
+        false
+      end
     end
 
     def enable_log(log = $stdout)
