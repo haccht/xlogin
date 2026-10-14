@@ -42,7 +42,7 @@ module Xlogin
           loggers << ((jobs > 1)? buffer : $stdout)
           loggers << File.expand_path(File.join(config[:logdir], "#{info[:name]}.log"), ENV['PWD']) if config[:logdir]
 
-          session = Xlogin.get(info.merge(log: loggers, **config[:env]))
+          session = Xlogin.get(**info.merge(log: loggers, **config[:env]))
           session.enable(session.config.enable) if session.config.enable && Xlogin.settings.enable?
 
           command_lines = config[:command].flat_map { |e| e.to_s.split(';').map(&:strip) }

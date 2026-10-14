@@ -34,6 +34,8 @@ module Xlogin
         args['FailEOF'] = true
         if @config.proxy
           args['Proxy'   ] = @config.proxy
+        elsif @config.session
+          args['Session' ] = @config.session
         else
           args['Host'    ] = @host
           args['Port'    ] = @port
